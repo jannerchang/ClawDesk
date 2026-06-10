@@ -13,3 +13,8 @@ __pycache__/
 # Xcode
 DerivedData/
 *.xcuserdata/
+
+# FFCS runtime and host-local config
+.ff-state/
+.claude/
+.codex/

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from app.db import get_conn
 from app.main import app
 
 
@@ -46,3 +47,14 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
 
         original_messages = client.get(f"/channels/{channel_id}/messages").json()
         assert any(item["sender_type"] == "system" and "已从" in item["content"] for item in original_messages)
+
+        hermes = client.post(f"/channels/{channel_id}/agent/hermes", json={"prompt": "请简短回复"}).json()
+        assert hermes["agent_run"]["status"] == "stubbed"
+        assert hermes["agent_run"]["output_text"].startswith("[Hermes stub]")
+        assert hermes["message"]["sender_type"] == "hermes"
+        assert hermes["message"]["sender_name"] == "Hermes"
+        assert hermes["message"]["content"].startswith("[Hermes stub]")
+
+        with get_conn() as conn:
+            run_count = conn.execute("SELECT COUNT(*) AS c FROM agent_runs WHERE id = ?", (hermes["agent_run"]["id"],)).fetchone()["c"]
+            assert run_count == 1

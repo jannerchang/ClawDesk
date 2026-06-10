@@ -99,6 +99,22 @@ class AgentRunOut(BaseModel):
     error: str | None = None
 
 
+class HermesInvokeCreate(BaseModel):
+    prompt: str | None = None
+    max_context_messages: int = Field(default=20, ge=1, le=100)
+    profile: str = "default"
+    model: str | None = None
+    reasoning: str | None = None
+
+
+class HermesInvokeOut(BaseModel):
+    agent_run: AgentRunOut
+    message: MessageOut
+
+
+def agent_run_from_row(row: dict[str, Any]) -> AgentRunOut:
+    return AgentRunOut(**dict(row))
+
 def channel_from_row(row: dict[str, Any]) -> ChannelOut:
     from app.db import loads_json
 

@@ -22,6 +22,32 @@ Override with:
 export CLAWDESK_DB_PATH=/path/to/clawdesk.db
 ```
 
+## Hermes agent endpoint
+
+Phase 1.1 adds a safe Hermes invocation endpoint. Stub mode is the default.
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/channels/$CHANNEL_ID/agent/hermes \
+  -H 'content-type: application/json' \
+  -d '{"prompt":"请简短回复"}'
+```
+
+Environment:
+
+```bash
+export CLAWDESK_HERMES_MODE=stub   # default, deterministic offline response
+export CLAWDESK_HERMES_MODE=cli    # opt-in real Hermes CLI call
+export CLAWDESK_HERMES_TIMEOUT_SECONDS=60
+```
+
+CLI mode invokes:
+
+```bash
+hermes chat -q <prompt> --profile default
+```
+
+Every invocation writes an `agent_runs` record. Successful invocations also insert a channel message with `sender_type=hermes` and `sender_name=Hermes`.
+
 ## Smoke test
 
 ```bash
