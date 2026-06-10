@@ -12,6 +12,12 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
 
         spaces = client.get("/spaces").json()
         assert len(spaces) >= 6
+        inbox = next(space for space in spaces if space["type"] == "inbox")
+        tech = next(space for space in spaces if space["type"] == "tech")
+        inbox_channels = client.get(f"/spaces/{inbox['id']}/channels").json()
+        tech_channels = client.get(f"/spaces/{tech['id']}/channels").json()
+        assert any(channel["name"] == "随手聊" for channel in inbox_channels)
+        assert any(channel["name"] == "技术聊天" for channel in tech_channels)
         space_id = spaces[0]["id"]
 
         channel = client.post(

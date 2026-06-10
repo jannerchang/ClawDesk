@@ -18,6 +18,30 @@ DEFAULT_SPACES = [
     ("归档", "archive", "archive", 60),
 ]
 
+DEFAULT_CHANNELS_BY_SPACE_TYPE = {
+    "inbox": [
+        ("随手聊", "temporary", "chat", "无目的入口：随手发一句、语音转文字、稍后整理。", ["inbox"]),
+    ],
+    "tech": [
+        ("技术聊天", "tech", "mixed", "技佐入口：技术闲聊、排障、工具开发，可从聊天生成子频道。", ["技佐", "技术"]),
+        ("Hermes / OpenClaw", "tech", "mixed", "Hermes、OpenClaw、Gateway、模型与 agent 工作流。", ["Hermes", "OpenClaw"]),
+    ],
+    "case": [
+        ("案件入口", "case", "mixed", "合议庭案件讨论入口。", ["案件"]),
+        ("已沉淀", "case", "forum", "已沉淀案件、规则卡与案例候选。", ["已沉淀"]),
+    ],
+    "research": [
+        ("研究聊天", "research", "mixed", "课题研究的自由讨论与问题生长区。", ["研究"]),
+        ("文献与案例", "research", "forum", "文献、案例、理论问题与章节素材。", ["文献", "案例"]),
+    ],
+    "knowledge": [
+        ("碎片整理", "normal", "mixed", "个人知识库入口：碎片、待整理想法与长期知识。", ["知识库"]),
+    ],
+    "archive": [
+        ("归档索引", "normal", "forum", "低频查阅与已完成内容索引。", ["归档"]),
+    ],
+}
+
 
 def db_path() -> Path:
     raw = os.getenv("CLAWDESK_DB_PATH")
@@ -130,6 +154,29 @@ def init_db() -> None:
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 [(new_id(), name, typ, icon, order, ts, ts) for name, typ, icon, order in DEFAULT_SPACES],
+            )
+        seed_default_channels(conn)
+
+
+def seed_default_channels(conn: sqlite3.Connection) -> None:
+    ts = now_iso()
+    spaces = conn.execute("SELECT id, type FROM spaces").fetchall()
+    for space in spaces:
+        for name, channel_type, mode, description, tags in DEFAULT_CHANNELS_BY_SPACE_TYPE.get(space["type"], []):
+            existing = conn.execute(
+                "SELECT id FROM channels WHERE space_id = ? AND parent_channel_id IS NULL AND name = ?",
+                (space["id"], name),
+            ).fetchone()
+            if existing:
+                continue
+            conn.execute(
+                """
+                INSERT INTO channels (
+                    id, space_id, parent_channel_id, name, type, mode, status, description,
+                    tags, agent_config_id, source_message_ids, created_at, updated_at
+                ) VALUES (?, ?, NULL, ?, ?, ?, 'active', ?, ?, NULL, '[]', ?, ?)
+                """,
+                (new_id(), space["id"], name, channel_type, mode, description, dumps_json(tags), ts, ts),
             )
 
 
