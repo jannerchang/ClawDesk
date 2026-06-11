@@ -5,7 +5,11 @@ import Observation
 public final class APIClient {
     public static let shared = APIClient()
 
-    public var baseURLString: String = "http://127.0.0.1:8000"
+    public var baseURLString: String = ProcessInfo.processInfo.environment["CLAWDESK_BASE_URL"] ?? UserDefaults.standard.string(forKey: "clawdesk.baseURL") ?? "http://127.0.0.1:8000" {
+        didSet {
+            UserDefaults.standard.set(baseURLString, forKey: "clawdesk.baseURL")
+        }
+    }
 
     private let session = URLSession.shared
 
@@ -42,6 +46,17 @@ public final class APIClient {
 
     public init() {}
 
+    public func checkHealth() async throws -> Bool {
+        let url = try makeURL(path: "health")
+        let (data, response) = try await session.data(from: url)
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw APIError.badStatus(http.statusCode, body)
+        }
+        let health = try decoder.decode(HealthResponse.self, from: data)
+        return health.ok
+    }
+
     public func fetchSpaces() async throws -> [Space] {
         let url = try makeURL(path: "spaces")
         let (data, _) = try await session.data(from: url)
@@ -60,6 +75,12 @@ public final class APIClient {
         return try decoder.decode([Channel].self, from: data)
     }
 
+    public func fetchChannelMembers(channelId: String) async throws -> [User] {
+        let url = try makeURL(path: "channels/\(channelId)/members")
+        let (data, _) = try await session.data(from: url)
+        return try decoder.decode([User].self, from: data)
+    }
+
     public func fetchMessages(channelId: String) async throws -> [Message] {
         let url = try makeURL(path: "channels/\(channelId)/messages")
         let (data, _) = try await session.data(from: url)
@@ -71,6 +92,43 @@ public final class APIClient {
         let payload = MessageCreateRequest(content: content, senderName: senderName)
         let url = try makeURL(path: "channels/\(channelId)/messages")
         return try await post(url: url, payload: payload, responseType: Message.self)
+    }
+
+    @discardableResult
+    public func invokeHermes(
+        channelId: String,
+        prompt: String? = nil,
+        maxContextMessages: Int = 20
+    ) async throws -> HermesInvokeResponse {
+        let payload = HermesInvokeRequest(prompt: prompt, maxContextMessages: maxContextMessages)
+        let url = try makeURL(path: "channels/\(channelId)/agent/hermes")
+        return try await post(url: url, payload: payload, responseType: HermesInvokeResponse.self)
+    }
+
+    @discardableResult
+    public func uploadAttachment(messageId: String, fileURL: URL) async throws -> Attachment {
+        let fileData = try Data(contentsOf: fileURL)
+        let fileName = fileURL.lastPathComponent.isEmpty ? "attachment" : fileURL.lastPathComponent
+        let mimeType = mimeTypeForPathExtension(fileURL.pathExtension)
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        body.appendString("--\(boundary)\r\n")
+        body.appendString("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n")
+        body.appendString("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(fileData)
+        body.appendString("\r\n--\(boundary)--\r\n")
+
+        var request = URLRequest(url: try makeURL(path: "messages/\(messageId)/attachments"))
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw APIError.badStatus(http.statusCode, body)
+        }
+        return try decoder.decode(Attachment.self, from: data)
     }
 
     @discardableResult
@@ -92,6 +150,22 @@ public final class APIClient {
         return baseURL.appending(path: path)
     }
 
+    private func mimeTypeForPathExtension(_ ext: String) -> String {
+        switch ext.lowercased() {
+        case "jpg", "jpeg": return "image/jpeg"
+        case "png": return "image/png"
+        case "gif": return "image/gif"
+        case "heic": return "image/heic"
+        case "mp3": return "audio/mpeg"
+        case "m4a": return "audio/mp4"
+        case "wav": return "audio/wav"
+        case "pdf": return "application/pdf"
+        case "txt", "md": return "text/plain"
+        case "json": return "application/json"
+        default: return "application/octet-stream"
+        }
+    }
+
     private func post<Payload: Encodable, Response: Decodable>(url: URL, payload: Payload, responseType: Response.Type) async throws -> Response {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -104,6 +178,18 @@ public final class APIClient {
             throw APIError.badStatus(http.statusCode, body)
         }
         return try decoder.decode(responseType, from: data)
+    }
+}
+
+public struct HealthResponse: Codable, Hashable, Sendable {
+    public let ok: Bool
+}
+
+private extension Data {
+    mutating func appendString(_ value: String) {
+        if let data = value.data(using: .utf8) {
+            append(data)
+        }
     }
 }
 

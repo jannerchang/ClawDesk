@@ -37,6 +37,42 @@ Override:
 export CLAWDESK_DB_PATH=/path/to/clawdesk.db
 ```
 
+### Hermes agent endpoint
+
+The backend exposes an explicit Hermes invocation endpoint:
+
+```text
+POST /channels/{channel_id}/agent/hermes
+```
+
+When `prompt` is omitted or blank, the backend builds the prompt from recent channel messages. Each invocation writes an `agent_runs` record and inserts a Hermes message into the channel.
+
+Hermes stays local-first and stubbed by default:
+
+```bash
+export CLAWDESK_HERMES_MODE=stub
+```
+
+Real Hermes CLI invocation is opt-in:
+
+```bash
+export CLAWDESK_HERMES_MODE=cli
+export CLAWDESK_HERMES_TIMEOUT_SECONDS=60
+```
+
+CLI mode runs `hermes chat -q <prompt> --profile <profile>` on the local machine. Default tests and smoke checks use stub mode.
+
+### Attachment endpoint
+
+The backend has a minimal local attachment endpoint:
+
+```text
+POST /messages/{message_id}/attachments
+GET /messages/{message_id}/attachments
+```
+
+Uploads use `multipart/form-data` field `file`. Files are stored under the local backend data directory and metadata is recorded in SQLite. This is the Phase 0.5 foundation for images, photos, files, and voice; Hermes does not interpret attachments yet.
+
 ## SwiftUI client build/run
 
 ```bash
@@ -91,6 +127,9 @@ Phase 0/1 prototype:
 - Janner human user and Hermes bot member model;
 - Space / Channel / Message / Attachment APIs;
 - create subchannel from selected messages;
+- SwiftUI Space → Channel → Chat skeleton;
+- SwiftUI selected-message flow wired to the backend subchannel API;
+- explicit SwiftUI “Ask Hermes” action wired to `POST /channels/{channel_id}/agent/hermes`;
 - Markdown rendering in message bubbles;
 - backend URL setting and health check in the SwiftUI client;
 - file attachment upload entry in the SwiftUI client;

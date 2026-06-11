@@ -31,8 +31,25 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         message = client.post(f"/channels/{channel_id}/messages", json={"content": "第一条测试消息"}).json()
         assert message["content"] == "第一条测试消息"
 
+        upload = client.post(
+            f"/messages/{message['id']}/attachments",
+            files={"file": ("hello.txt", b"hello attachment", "text/plain")},
+        ).json()
+        assert upload["message_id"] == message["id"]
+        assert upload["kind"] == "file"
+        assert upload["original_name"] == "hello.txt"
+        assert upload["size"] == len(b"hello attachment")
+
+        attachments = client.get(f"/messages/{message['id']}/attachments").json()
+        assert [item["id"] for item in attachments] == [upload["id"]]
+
         messages = client.get(f"/channels/{channel_id}/messages").json()
         assert [item["id"] for item in messages] == [message["id"]]
+
+        members = client.get(f"/channels/{channel_id}/members").json()
+        assert [member["name"] for member in members] == ["Janner", "Hermes"]
+        assert members[0]["kind"] == "human"
+        assert members[1]["kind"] == "bot"
 
         subchannel = client.post(
             f"/channels/{channel_id}/subchannels/from_messages",
@@ -40,6 +57,9 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         ).json()
         assert subchannel["parent_channel_id"] == channel_id
         assert subchannel["source_message_ids"] == [message["id"]]
+
+        sub_members = client.get(f"/channels/{subchannel['id']}/members").json()
+        assert [member["name"] for member in sub_members] == ["Janner", "Hermes"]
 
         copied = client.get(f"/channels/{subchannel['id']}/messages").json()
         assert len(copied) == 1

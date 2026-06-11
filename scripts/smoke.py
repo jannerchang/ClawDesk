@@ -29,12 +29,36 @@ def request(method: str, path: str, payload: dict[str, Any] | None = None) -> An
         return json.loads(body) if body else None
 
 
+def upload_file(path: str, filename: str, content: bytes, content_type: str) -> Any:
+    boundary = "----ClawDeskSmokeBoundary"
+    body = b"\r\n".join(
+        [
+            f"--{boundary}".encode(),
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"'.encode(),
+            f"Content-Type: {content_type}".encode(),
+            b"",
+            content,
+            f"--{boundary}--".encode(),
+            b"",
+        ]
+    )
+    req = urllib.request.Request(
+        BASE_URL + path,
+        data=body,
+        headers={"content-type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode())
+
+
 def wait_ready(proc: subprocess.Popen[str]) -> None:
     deadline = time.time() + 20
     last_error = ""
     while time.time() < deadline:
         if proc.poll() is not None:
-            raise RuntimeError(f"server exited early with code {proc.returncode}")
+            output = proc.communicate(timeout=1)[0] or ""
+            raise RuntimeError(f"server exited early with code {proc.returncode}\n{output}")
         try:
             if request("GET", "/health") == {"ok": True}:
                 return
@@ -71,7 +95,21 @@ def main() -> int:
             "/channels",
             {"space_id": inbox["id"], "name": "Smoke 技术聊天", "type": "tech", "mode": "mixed"},
         ))
+        members = cast(list[dict[str, Any]], request("GET", f"/channels/{channel['id']}/members"))
+        assert [member["name"] for member in members] == ["Janner", "Hermes"], members
         message = cast(dict[str, Any], request("POST", f"/channels/{channel['id']}/messages", {"content": "第一条 smoke 消息"}))
+        attachment = cast(dict[str, Any], upload_file(
+            f"/messages/{message['id']}/attachments",
+            "smoke.txt",
+            b"smoke attachment",
+            "text/plain",
+        ))
+        assert attachment["message_id"] == message["id"], attachment
+        assert attachment["original_name"] == "smoke.txt", attachment
+        hermes = cast(dict[str, Any], request("POST", f"/channels/{channel['id']}/agent/hermes", {}))
+        hermes_message = cast(dict[str, Any], hermes["message"])
+        assert hermes_message["sender_type"] == "hermes", hermes
+        assert hermes_message["content"].startswith("[Hermes stub]"), hermes
         subchannel = cast(dict[str, Any], request(
             "POST",
             f"/channels/{channel['id']}/subchannels/from_messages",
@@ -79,7 +117,7 @@ def main() -> int:
         ))
         copied = cast(list[dict[str, Any]], request("GET", f"/channels/{subchannel['id']}/messages"))
         assert copied[0]["source_message_id"] == message["id"], copied
-        print("SMOKE_OK", json.dumps({"space": inbox["name"], "channel": channel["name"], "subchannel": subchannel["name"]}, ensure_ascii=False))
+        print("SMOKE_OK", json.dumps({"space": inbox["name"], "channel": channel["name"], "members": [member["name"] for member in members], "subchannel": subchannel["name"], "hermes": hermes_message["sender_type"], "attachment": attachment["original_name"]}, ensure_ascii=False))
         return 0
     finally:
         proc.terminate()

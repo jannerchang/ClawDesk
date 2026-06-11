@@ -20,7 +20,8 @@ public struct MessageBubble: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 
-                Text(message.content)
+                renderedContent
+                    .textSelection(.enabled)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(isCurrentUser ? Color.blue : Color.gray.opacity(0.2))
@@ -38,6 +39,14 @@ public struct MessageBubble: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
+    }
+    private var renderedContent: Text {
+        do {
+            let attributed = try AttributedString(markdown: message.content)
+            return Text(attributed)
+        } catch {
+            return Text(message.content)
+        }
     }
 }
 

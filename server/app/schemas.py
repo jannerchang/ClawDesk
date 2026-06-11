@@ -52,6 +52,17 @@ class ChannelOut(BaseModel):
     updated_at: str
 
 
+class UserOut(BaseModel):
+    id: str
+    name: str
+    kind: str
+    avatar: str | None = None
+    description: str | None = None
+    role: str | None = None
+    created_at: str
+    updated_at: str
+
+
 class MessageCreate(BaseModel):
     sender_type: str = "user"
     sender_name: str = "Janner"
@@ -72,6 +83,17 @@ class MessageOut(BaseModel):
     source_message_id: str | None = None
     created_at: str
     updated_at: str
+
+
+class AttachmentOut(BaseModel):
+    id: str
+    message_id: str
+    kind: str
+    original_name: str
+    local_path: str
+    mime_type: str | None = None
+    size: int
+    created_at: str
 
 
 class SubchannelFromMessagesCreate(BaseModel):

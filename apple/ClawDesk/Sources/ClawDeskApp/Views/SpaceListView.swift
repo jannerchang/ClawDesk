@@ -4,6 +4,7 @@ public struct SpaceListView: View {
     @State private var spaces: [Space] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var showBackendSettings = false
     
     private let apiClient = APIClient.shared
     
@@ -23,6 +24,19 @@ public struct SpaceListView: View {
                 }
             }
             .navigationTitle("Spaces")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showBackendSettings = true
+                    } label: {
+                        Image(systemName: "server.rack")
+                    }
+                    .help("Backend Settings")
+                }
+            }
+            .sheet(isPresented: $showBackendSettings) {
+                BackendSettingsView()
+            }
             .navigationDestination(for: Space.self) { space in
                 ChannelListView(space: space)
             }

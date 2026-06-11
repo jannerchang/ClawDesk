@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.db import dumps_json, get_conn
-from app.schemas import ChannelCreate, ChannelOut, SubchannelFromMessagesCreate, channel_from_row
+from app.db import dumps_json, get_conn, seed_default_channel_members
+from app.schemas import ChannelCreate, ChannelOut, SubchannelFromMessagesCreate, UserOut, channel_from_row
 from app.utils import new_id, now_iso
 
 router = APIRouter(prefix="/channels", tags=["channels"])
@@ -49,6 +49,7 @@ def create_channel(payload: ChannelCreate) -> dict:
             ),
         )
         row = _fetch_channel(conn, channel_id)
+        seed_default_channel_members(conn)
         return channel_from_row(dict(row)).model_dump()
 
 
@@ -57,6 +58,25 @@ def get_channel(channel_id: str) -> dict:
     with get_conn() as conn:
         row = _fetch_channel(conn, channel_id)
         return channel_from_row(dict(row)).model_dump()
+
+
+@router.get("/{channel_id}/members", response_model=list[UserOut])
+def list_channel_members(channel_id: str) -> list[dict]:
+    with get_conn() as conn:
+        _fetch_channel(conn, channel_id)
+        rows = conn.execute(
+            """
+            SELECT users.id, users.name, users.kind, users.avatar, users.description,
+                   channel_members.role, users.created_at, users.updated_at
+            FROM channel_members
+            JOIN users ON users.id = channel_members.user_id
+            WHERE channel_members.channel_id = ?
+            ORDER BY CASE channel_members.role WHEN 'owner' THEN 0 WHEN 'bot' THEN 1 ELSE 2 END,
+                     users.name ASC
+            """,
+            (channel_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
 
 
 @router.get("/{channel_id}/subchannels", response_model=list[ChannelOut])
@@ -141,4 +161,5 @@ def create_subchannel_from_messages(channel_id: str, payload: SubchannelFromMess
             (new_id(), channel_id, system_message, ts, ts),
         )
         new_row = _fetch_channel(conn, new_channel_id)
+        seed_default_channel_members(conn)
         return channel_from_row(dict(new_row)).model_dump()

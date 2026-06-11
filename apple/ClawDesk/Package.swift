@@ -8,10 +8,10 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(name: "ClawDeskApp", targets: ["ClawDeskApp"])
+        .executable(name: "ClawDeskApp", targets: ["ClawDeskApp"])
     ],
     targets: [
-        .target(
+        .executableTarget(
             name: "ClawDeskApp",
             path: "Sources/ClawDeskApp"
         )

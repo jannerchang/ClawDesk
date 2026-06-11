@@ -9,6 +9,11 @@ from typing import Iterator
 
 from app.utils import new_id, now_iso
 
+DEFAULT_USERS = [
+    ("user_janner", "Janner", "human", "J", None),
+    ("bot_hermes", "Hermes", "bot", "H", "Hermes / OpenClaw"),
+]
+
 DEFAULT_SPACES = [
     ("Inbox / 随手聊", "inbox", "tray", 10),
     ("技佐", "tech", "wrench", 20),
@@ -73,6 +78,16 @@ def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(
             """
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                kind TEXT NOT NULL DEFAULT 'human',
+                avatar TEXT,
+                description TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS spaces (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -99,6 +114,14 @@ def init_db() -> None:
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS channel_members (
+                channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role TEXT NOT NULL DEFAULT 'member',
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (channel_id, user_id)
+            );
+
             CREATE TABLE IF NOT EXISTS messages (
                 id TEXT PRIMARY KEY,
                 channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
@@ -110,6 +133,17 @@ def init_db() -> None:
                 source_message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS attachments (
+                id TEXT PRIMARY KEY,
+                message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                local_path TEXT NOT NULL,
+                mime_type TEXT,
+                size INTEGER NOT NULL,
+                created_at TEXT NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS agent_configs (
@@ -145,6 +179,7 @@ def init_db() -> None:
             );
             """
         )
+        seed_default_users(conn)
         count = conn.execute("SELECT COUNT(*) AS c FROM spaces").fetchone()["c"]
         if count == 0:
             ts = now_iso()
@@ -156,6 +191,33 @@ def init_db() -> None:
                 [(new_id(), name, typ, icon, order, ts, ts) for name, typ, icon, order in DEFAULT_SPACES],
             )
         seed_default_channels(conn)
+        seed_default_channel_members(conn)
+
+
+def seed_default_users(conn: sqlite3.Connection) -> None:
+    ts = now_iso()
+    for user_id, name, kind, avatar, description in DEFAULT_USERS:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO users (id, name, kind, avatar, description, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, name, kind, avatar, description, ts, ts),
+        )
+
+
+def seed_default_channel_members(conn: sqlite3.Connection) -> None:
+    ts = now_iso()
+    channels = conn.execute("SELECT id FROM channels").fetchall()
+    for channel in channels:
+        for user_id, role in (("user_janner", "owner"), ("bot_hermes", "bot")):
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO channel_members (channel_id, user_id, role, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (channel["id"], user_id, role, ts),
+            )
 
 
 def seed_default_channels(conn: sqlite3.Connection) -> None:
