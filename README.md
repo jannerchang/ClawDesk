@@ -136,6 +136,21 @@ Expected output starts with:
 SMOKE_OK
 ```
 
+## macOS package build
+
+```bash
+./scripts/package_macos.py
+```
+
+Outputs:
+
+```text
+dist/ClawDesk.app
+dist/ClawDesk-0.1.0-macOS.zip
+```
+
+The package is a local macOS app bundle with the SwiftUI release executable and bundled FastAPI backend. It is ad-hoc signed, not notarized. See `docs/deploy/macos-packaging.md`.
+
 ## Current phase
 
 Phase 0/1 prototype:
