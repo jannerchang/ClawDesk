@@ -151,6 +151,27 @@ dist/ClawDesk-0.1.0-macOS.zip
 
 The package is a local macOS app bundle with the SwiftUI release executable and bundled FastAPI backend. It is ad-hoc signed, not notarized. See `docs/deploy/macos-packaging.md`.
 
+For the Office-client/Home-backend model, build the client-only package instead:
+
+```bash
+./scripts/package_macos_client.py
+```
+
+Outputs:
+
+```text
+dist/ClawDesk-Client.app
+dist/ClawDesk-0.1.0-macOS-client.zip
+```
+
+Run the backend on the Hermes machine with:
+
+```bash
+CLAWDESK_HOST=0.0.0.0 CLAWDESK_PORT=8765 ./scripts/run_backend.sh
+```
+
+Then set the Office client Backend URL to the Hermes machine's Tailscale URL, for example `http://100.95.79.69:8765`. See `docs/deploy/remote-client-tailscale.md`.
+
 ## Current phase
 
 Phase 0/1 prototype:
