@@ -62,6 +62,27 @@ public struct Channel: Codable, Identifiable, Hashable, Sendable {
     }
 }
 
+public struct ChannelCreateRequest: Codable, Sendable {
+    public let spaceId: String
+    public let name: String
+    public let type: String
+    public let mode: String
+
+    enum CodingKeys: String, CodingKey {
+        case spaceId = "space_id"
+        case name
+        case type
+        case mode
+    }
+
+    public init(spaceId: String, name: String, type: String = "normal", mode: String = "mixed") {
+        self.spaceId = spaceId
+        self.name = name
+        self.type = type
+        self.mode = mode
+    }
+}
+
 public struct SubchannelFromMessagesRequest: Codable, Sendable {
     public let name: String
     public let type: String

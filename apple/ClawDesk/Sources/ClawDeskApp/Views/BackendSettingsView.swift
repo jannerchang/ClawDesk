@@ -61,7 +61,12 @@ public struct BackendSettingsView: View {
         isChecking = true
         defer { isChecking = false }
         do {
-            statusText = try await apiClient.checkHealth() ? "Connected" : "Backend returned not ok"
+            let health = try await apiClient.checkHealth()
+            if health.ok {
+                statusText = "Connected · Hermes: \(health.hermesMode ?? "unknown")"
+            } else {
+                statusText = "Backend returned not ok"
+            }
         } catch {
             statusText = "Failed: \(error.localizedDescription)"
         }

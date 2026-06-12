@@ -8,8 +8,11 @@ from app.main import app
 
 def test_health_and_crud_flow(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAWDESK_DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("CLAWDESK_HERMES_MODE", "stub")
     with TestClient(app) as client:
-        assert client.get("/health").json() == {"ok": True}
+        health = client.get("/health").json()
+        assert health["ok"] is True
+        assert "hermes_mode" in health
 
         spaces = client.get("/spaces").json()
         assert len(spaces) >= 6

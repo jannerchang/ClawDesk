@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 
 from app.api import agents, attachments, channels, messages, spaces
@@ -14,8 +16,8 @@ def on_startup() -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, bool]:
-    return {"ok": True}
+def health() -> dict[str, bool | str]:
+    return {"ok": True, "hermes_mode": os.getenv("CLAWDESK_HERMES_MODE", "auto")}
 
 
 app.include_router(spaces.router)

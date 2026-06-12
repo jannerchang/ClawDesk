@@ -25,6 +25,8 @@ Use real Hermes CLI mode:
 CLAWDESK_HERMES_MODE=cli uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
+Default mode is `auto`: the backend tries local Hermes CLI first and falls back to stub output if Hermes is unavailable. Use `cli` with `CLAWDESK_HERMES_FALLBACK_TO_STUB=0` when you want failures to be explicit.
+
 Default dev database:
 
 ```text
@@ -47,20 +49,27 @@ POST /channels/{channel_id}/agent/hermes
 
 When `prompt` is omitted or blank, the backend builds the prompt from recent channel messages. Each invocation writes an `agent_runs` record and inserts a Hermes message into the channel.
 
-Hermes stays local-first and stubbed by default:
+Hermes is local-first. The backend defaults to `auto` mode:
+
+```bash
+export CLAWDESK_HERMES_MODE=auto
+```
+
+`auto` tries the local Hermes CLI first, then falls back to deterministic stub output if Hermes is unavailable. For offline/dev tests, force stub mode:
 
 ```bash
 export CLAWDESK_HERMES_MODE=stub
 ```
 
-Real Hermes CLI invocation is opt-in:
+For strict real Hermes CLI invocation:
 
 ```bash
 export CLAWDESK_HERMES_MODE=cli
-export CLAWDESK_HERMES_TIMEOUT_SECONDS=60
+export CLAWDESK_HERMES_TIMEOUT_SECONDS=120
+export CLAWDESK_HERMES_FALLBACK_TO_STUB=0
 ```
 
-CLI mode runs `hermes chat -q <prompt> --profile <profile>` on the local machine. Default tests and smoke checks use stub mode.
+CLI mode runs `hermes chat -q <prompt> --profile <profile> --quiet` on the local machine. Default tests and `scripts/smoke.py` use stub mode; `scripts/smoke_real_hermes.py` verifies the real CLI path.
 
 ### Attachment endpoint
 
@@ -111,7 +120,15 @@ From the repo root:
 ./scripts/smoke.py
 ```
 
-The script starts the backend on `127.0.0.1:8000`, uses an isolated smoke DB, verifies default spaces/channels, creates a channel, posts a message, creates a subchannel, checks channel members, invokes Hermes, uploads an attachment, and verifies the response.
+The script starts the backend on `127.0.0.1:8000`, uses an isolated smoke DB, verifies default spaces/channels, creates a channel, posts a message, creates a subchannel, checks channel members, invokes Hermes in stub mode, uploads an attachment, and verifies the response.
+
+To verify real Hermes CLI communication as well:
+
+```bash
+./scripts/smoke_real_hermes.py
+```
+
+That script starts the backend on `127.0.0.1:8001` with `CLAWDESK_HERMES_MODE=cli` and expects Hermes to reply through the local CLI path.
 
 Expected output starts with:
 
@@ -127,10 +144,9 @@ Phase 0/1 prototype:
 - Janner human user and Hermes bot member model;
 - Space / Channel / Message / Attachment APIs;
 - create subchannel from selected messages;
-- SwiftUI Space → Channel → Chat skeleton;
+- SwiftUI Space → Channel → Chat usable client shell with backend status, channel creation, member bar, message sending, Hermes bot replies, and attachment cards;
 - SwiftUI selected-message flow wired to the backend subchannel API;
-- explicit SwiftUI “Ask Hermes” action wired to `POST /channels/{channel_id}/agent/hermes`;
 - Markdown rendering in message bubbles;
 - backend URL setting and health check in the SwiftUI client;
 - file attachment upload entry in the SwiftUI client;
-- Hermes adapter endpoint, with stub mode by default and CLI mode available.
+- Hermes adapter endpoint, with auto/cli/stub modes and real Hermes smoke coverage.

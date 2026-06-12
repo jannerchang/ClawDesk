@@ -46,15 +46,14 @@ public final class APIClient {
 
     public init() {}
 
-    public func checkHealth() async throws -> Bool {
+    public func checkHealth() async throws -> HealthResponse {
         let url = try makeURL(path: "health")
         let (data, response) = try await session.data(from: url)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             let body = String(data: data, encoding: .utf8) ?? ""
             throw APIError.badStatus(http.statusCode, body)
         }
-        let health = try decoder.decode(HealthResponse.self, from: data)
-        return health.ok
+        return try decoder.decode(HealthResponse.self, from: data)
     }
 
     public func fetchSpaces() async throws -> [Space] {
@@ -85,6 +84,12 @@ public final class APIClient {
         let url = try makeURL(path: "channels/\(channelId)/messages")
         let (data, _) = try await session.data(from: url)
         return try decoder.decode([Message].self, from: data)
+    }
+
+    public func fetchAttachments(messageId: String) async throws -> [Attachment] {
+        let url = try makeURL(path: "messages/\(messageId)/attachments")
+        let (data, _) = try await session.data(from: url)
+        return try decoder.decode([Attachment].self, from: data)
     }
 
     @discardableResult
@@ -129,6 +134,13 @@ public final class APIClient {
             throw APIError.badStatus(http.statusCode, body)
         }
         return try decoder.decode(Attachment.self, from: data)
+    }
+
+    @discardableResult
+    public func createChannel(spaceId: String, name: String, type: String = "normal", mode: String = "mixed") async throws -> Channel {
+        let payload = ChannelCreateRequest(spaceId: spaceId, name: name, type: type, mode: mode)
+        let url = try makeURL(path: "channels")
+        return try await post(url: url, payload: payload, responseType: Channel.self)
     }
 
     @discardableResult
@@ -183,6 +195,12 @@ public final class APIClient {
 
 public struct HealthResponse: Codable, Hashable, Sendable {
     public let ok: Bool
+    public let hermesMode: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case hermesMode = "hermes_mode"
+    }
 }
 
 private extension Data {

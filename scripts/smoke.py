@@ -60,7 +60,7 @@ def wait_ready(proc: subprocess.Popen[str]) -> None:
             output = proc.communicate(timeout=1)[0] or ""
             raise RuntimeError(f"server exited early with code {proc.returncode}\n{output}")
         try:
-            if request("GET", "/health") == {"ok": True}:
+            if request("GET", "/health").get("ok") is True:
                 return
         except (urllib.error.URLError, TimeoutError, RuntimeError) as exc:
             last_error = str(exc)
@@ -77,7 +77,7 @@ def main() -> int:
     proc = subprocess.Popen(
         ["uv", "run", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
         cwd=SERVER,
-        env=env,
+        env=dict(env, CLAWDESK_HERMES_MODE="stub"),
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

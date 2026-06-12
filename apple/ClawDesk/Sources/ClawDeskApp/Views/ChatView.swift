@@ -5,6 +5,7 @@ public struct ChatView: View {
     public let channel: Channel
 
     @State private var messages: [Message] = []
+    @State private var attachmentsByMessageId: [String: [Attachment]] = [:]
     @State private var members: [User] = []
     @State private var newMessageText = ""
     @State private var isLoading = false
@@ -44,7 +45,11 @@ public struct ChatView: View {
                                     selectionToggle(for: message)
                                 }
 
-                                MessageBubble(message: message, isCurrentUser: message.isUserMessage)
+                                MessageBubble(
+                                    message: message,
+                                    isCurrentUser: message.isUserMessage,
+                                    attachments: attachmentsByMessageId[message.id] ?? []
+                                )
                             }
                             .id(message.id)
                         }
@@ -67,6 +72,12 @@ public struct ChatView: View {
                         "Failed to Load Messages",
                         systemImage: "exclamationmark.triangle",
                         description: Text(errorMessage)
+                    )
+                } else if messages.isEmpty {
+                    ContentUnavailableView(
+                        "No Messages",
+                        systemImage: "bubble.left",
+                        description: Text("Send a message and Hermes will reply as a channel bot.")
                     )
                 }
             }
@@ -125,9 +136,9 @@ public struct ChatView: View {
                     Text(member.name)
                         .font(.caption)
                     if member.kind == "bot" {
-                        Text("bot")
+                        Text(isInvokingHermes && member.name == "Hermes" ? "replying" : "bot")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(isInvokingHermes && member.name == "Hermes" ? .purple : .secondary)
                     }
                 }
                 .padding(.horizontal, 8)
@@ -173,8 +184,9 @@ public struct ChatView: View {
             }
             .disabled(isSending || isUploadingAttachment)
 
-            TextField("Message #\(channel.name)", text: $newMessageText)
+            TextField("Message #\(channel.name)", text: $newMessageText, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
+                .lineLimit(1...4)
                 .onSubmit {
                     Task { await sendMessage() }
                 }
@@ -182,7 +194,12 @@ public struct ChatView: View {
             Button {
                 Task { await sendMessage() }
             } label: {
-                Image(systemName: "paperplane.fill")
+                if isSending {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "paperplane.fill")
+                }
             }
             .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isUploadingAttachment)
         }
@@ -242,10 +259,26 @@ public struct ChatView: View {
         do {
             messages = try await messagesTask
             members = try await membersTask
+            await loadAttachments(for: messages)
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func loadAttachments(for messages: [Message]) async {
+        var result: [String: [Attachment]] = [:]
+        for message in messages {
+            do {
+                let attachments = try await apiClient.fetchAttachments(messageId: message.id)
+                if !attachments.isEmpty {
+                    result[message.id] = attachments
+                }
+            } catch {
+                // Attachment metadata is auxiliary; keep the chat usable if it fails.
+            }
+        }
+        attachmentsByMessageId = result
     }
 
     private func sendMessage() async {
@@ -322,6 +355,7 @@ public struct ChatView: View {
             )
             upsertMessage(placeholder)
             let attachment = try await apiClient.uploadAttachment(messageId: placeholder.id, fileURL: fileURL)
+            attachmentsByMessageId[placeholder.id] = [attachment]
             infoMessage = "Uploaded attachment: \(attachment.originalName)"
         } catch {
             infoMessage = "Failed to upload attachment: \(error.localizedDescription)"
