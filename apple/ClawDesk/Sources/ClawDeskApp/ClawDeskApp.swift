@@ -4,7 +4,7 @@ import SwiftUI
 struct ClawDeskApp: App {
     var body: some Scene {
         WindowGroup {
-            SpaceListView()
+            ClawDeskWorkspaceView()
         }
     }
 }
