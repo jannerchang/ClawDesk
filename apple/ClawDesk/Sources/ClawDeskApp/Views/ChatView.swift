@@ -171,19 +171,7 @@ public struct ChatView: View {
                     Image(systemName: "plus.circle")
                 }
             }
-            .disabled(isSending || isInvokingHermes || isUploadingAttachment)
-
-            Button {
-                Task { await askHermes() }
-            } label: {
-                if isInvokingHermes {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Label("Ask Hermes", systemImage: "sparkles")
-                }
-            }
-            .disabled(isSending || isInvokingHermes || isUploadingAttachment)
+            .disabled(isSending || isUploadingAttachment)
 
             TextField("Message #\(channel.name)", text: $newMessageText)
                 .textFieldStyle(.roundedBorder)
@@ -196,7 +184,7 @@ public struct ChatView: View {
             } label: {
                 Image(systemName: "paperplane.fill")
             }
-            .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isInvokingHermes || isUploadingAttachment)
+            .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isUploadingAttachment)
         }
         .padding()
     }
@@ -272,23 +260,25 @@ public struct ChatView: View {
             let sentMessage = try await apiClient.sendMessage(channelId: channel.id, content: content)
             messages.append(sentMessage)
             infoMessage = nil
+            await triggerHermesReply()
         } catch {
             infoMessage = "Failed to send message: \(error.localizedDescription)"
         }
     }
 
-    private func askHermes() async {
+    private func triggerHermesReply() async {
         guard !isInvokingHermes else { return }
 
         isInvokingHermes = true
-        infoMessage = nil
+        infoMessage = "Hermes is replying…"
         defer { isInvokingHermes = false }
 
         do {
             let response = try await apiClient.invokeHermes(channelId: channel.id, prompt: nil)
             upsertMessage(response.message)
+            infoMessage = nil
         } catch {
-            infoMessage = "Failed to ask Hermes: \(error.localizedDescription)"
+            infoMessage = "Failed to get Hermes reply: \(error.localizedDescription)"
         }
     }
 

@@ -19,15 +19,15 @@ public struct MessageBubble: View {
                 Text(message.senderName)
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                
+
                 renderedContent
                     .textSelection(.enabled)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(isCurrentUser ? Color.blue : Color.gray.opacity(0.2))
+                    .background(bubbleColor)
                     .foregroundColor(isCurrentUser ? .white : .primary)
                     .cornerRadius(12)
-                
+
                 Text(message.createdAt, style: .time)
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -47,6 +47,16 @@ public struct MessageBubble: View {
         } catch {
             return Text(message.content)
         }
+    }
+
+    private var bubbleColor: Color {
+        if isCurrentUser {
+            return .blue
+        }
+        if message.senderType == "hermes" {
+            return Color.purple.opacity(0.16)
+        }
+        return Color.gray.opacity(0.2)
     }
 }
 
