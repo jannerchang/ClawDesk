@@ -3,6 +3,7 @@ import SwiftUI
 public struct ClawDeskWorkspaceView: View {
     @State private var spaces: [Space] = []
     @State private var channels: [Channel] = []
+    @State private var channelsBySpaceId: [String: [Channel]] = [:]
     @State private var selectedSpace: Space?
     @State private var selectedChannel: Channel?
     @State private var health: HealthResponse?
@@ -15,27 +16,26 @@ public struct ClawDeskWorkspaceView: View {
     @State private var isCreatingChannel = false
 
     private let apiClient = APIClient.shared
+    private let telegramBlue = Color(red: 0.18, green: 0.54, blue: 0.86)
 
     public init() {}
 
     public var body: some View {
         HStack(spacing: 0) {
             folderRail
-                .frame(width: 78)
-                .background(Color.gray.opacity(0.10))
-
-            Divider()
+                .frame(width: 76)
+                .background(Color(red: 0.13, green: 0.16, blue: 0.19))
 
             conversationColumn
-                .frame(minWidth: 260, idealWidth: 320, maxWidth: 380)
-                .background(Color.gray.opacity(0.05))
+                .frame(minWidth: 292, idealWidth: 330, maxWidth: 380)
+                .background(Color(nsColor: .windowBackgroundColor))
 
             Divider()
 
             chatColumn
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 980, minHeight: 640)
+        .frame(minWidth: 1020, minHeight: 660)
         .sheet(isPresented: $showBackendSettings) {
             BackendSettingsView()
         }
@@ -48,83 +48,112 @@ public struct ClawDeskWorkspaceView: View {
     }
 
     private var folderRail: some View {
-        VStack(spacing: 10) {
-            Text("Claw")
-                .font(.caption)
+        VStack(spacing: 8) {
+            Text("C")
+                .font(.headline)
                 .fontWeight(.bold)
-                .foregroundStyle(.secondary)
-                .padding(.top, 12)
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(telegramBlue)
+                .clipShape(Circle())
+                .padding(.top, 14)
+                .padding(.bottom, 6)
 
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(spaces) { space in
-                        Button {
-                            Task { await selectSpace(space) }
-                        } label: {
-                            VStack(spacing: 4) {
-                                Image(systemName: symbolName(for: space.icon))
-                                    .font(.title3)
-                                    .frame(width: 42, height: 34)
-                                    .background(selectedSpace?.id == space.id ? Color.blue.opacity(0.18) : Color.clear)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                                Text(shortName(for: space))
-                                    .font(.caption2)
-                                    .lineLimit(1)
-                            }
-                            .foregroundStyle(selectedSpace?.id == space.id ? .blue : .primary)
-                        }
-                        .buttonStyle(.plain)
-                        .help(space.name)
+                        folderButton(space)
                     }
                 }
                 .padding(.vertical, 4)
             }
+            .scrollIndicators(.hidden)
 
             Spacer()
 
-            Button {
+            railIcon("arrow.clockwise", help: "Refresh") {
                 Task { await loadInitialData() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .frame(width: 42, height: 34)
             }
-            .buttonStyle(.plain)
-            .help("Refresh")
 
-            Button {
+            railIcon("server.rack", help: "Backend Settings") {
                 showBackendSettings = true
-            } label: {
-                Image(systemName: "server.rack")
-                    .frame(width: 42, height: 34)
             }
-            .buttonStyle(.plain)
-            .help("Backend Settings")
-            .padding(.bottom, 12)
+            .padding(.bottom, 14)
         }
+    }
+
+    private func folderButton(_ space: Space) -> some View {
+        let selected = selectedSpace?.id == space.id
+        return Button {
+            Task { await selectSpace(space) }
+        } label: {
+            VStack(spacing: 4) {
+                ZStack(alignment: .leading) {
+                    if selected {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.white)
+                            .frame(width: 3, height: 28)
+                            .offset(x: -12)
+                    }
+                    Image(systemName: symbolName(for: space.icon))
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 42, height: 36)
+                        .background(selected ? telegramBlue : Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                Text(shortName(for: space))
+                    .font(.system(size: 10, weight: selected ? .semibold : .regular))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(selected ? .white : Color.white.opacity(0.72))
+        }
+        .buttonStyle(.plain)
+        .help(space.name)
+    }
+
+    private func railIcon(_ name: String, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: name)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.72))
+                .frame(width: 42, height: 36)
+                .background(Color.white.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .help(help)
     }
 
     private var conversationColumn: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(selectedSpace?.name ?? "Folders")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                        Text(backendStatusText)
-                            .font(.caption)
-                            .foregroundStyle(health?.ok == true ? .green : .secondary)
-                            .lineLimit(1)
-                    }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Text(selectedSpace?.name ?? "Chats")
+                        .font(.system(size: 22, weight: .bold))
+                        .lineLimit(1)
+
                     Spacer()
+
                     Button {
                         newChannelName = ""
                         showCreateChannelSheet = true
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 17, weight: .semibold))
                     }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(telegramBlue)
                     .disabled(selectedSpace == nil)
                     .help("New Channel")
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: health?.ok == true ? "checkmark.circle.fill" : "exclamationmark.circle")
+                        .foregroundStyle(health?.ok == true ? .green : .orange)
+                    Text(backendStatusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
                 if let errorMessage {
@@ -134,11 +163,13 @@ public struct ClawDeskWorkspaceView: View {
                         .lineLimit(2)
                 }
             }
-            .padding(14)
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
 
             Divider()
 
-            if isLoadingChannels {
+            if isLoadingChannels && channels.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if channels.isEmpty {
@@ -149,16 +180,16 @@ public struct ClawDeskWorkspaceView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(channels, id: \.id, selection: Binding(
-                    get: { selectedChannel?.id },
-                    set: { id in
-                        selectedChannel = channels.first(where: { $0.id == id })
+                ScrollView {
+                    LazyVStack(spacing: 2) {
+                        ForEach(channels) { channel in
+                            channelRow(channel)
+                        }
                     }
-                )) { channel in
-                    channelRow(channel)
-                        .tag(channel.id)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
                 }
-                .listStyle(.sidebar)
+                .scrollIndicators(.automatic)
             }
         }
     }
@@ -167,6 +198,7 @@ public struct ClawDeskWorkspaceView: View {
         Group {
             if let selectedChannel {
                 ChatView(channel: selectedChannel)
+                    .id(selectedChannel.id)
             } else {
                 ContentUnavailableView(
                     "Select a Conversation",
@@ -178,33 +210,47 @@ public struct ClawDeskWorkspaceView: View {
     }
 
     private func channelRow(_ channel: Channel) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: channel.parentChannelId == nil ? "number" : "arrow.turn.down.right")
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(channel.name)
-                        .font(.headline)
-                        .lineLimit(1)
-                    if channel.parentChannelId != nil {
-                        Text("sub")
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.gray.opacity(0.15))
-                            .clipShape(Capsule())
+        let selected = selectedChannel?.id == channel.id
+        return Button {
+            selectedChannel = channel
+        } label: {
+            HStack(spacing: 10) {
+                Text(channelInitial(channel))
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(channel.parentChannelId == nil ? telegramBlue : Color.purple.opacity(0.82))
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(channel.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .lineLimit(1)
+                        if channel.parentChannelId != nil {
+                            Text("sub")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.gray.opacity(0.16))
+                                .clipShape(Capsule())
+                        }
+                        Spacer()
                     }
-                }
-                if let description = channel.description, !description.isEmpty {
-                    Text(description)
-                        .font(.caption)
+                    Text(channel.description?.isEmpty == false ? channel.description! : "Janner · Hermes")
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(1)
                 }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(selected ? telegramBlue.opacity(0.15) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
     }
 
     private var createChannelSheet: some View {
@@ -253,7 +299,7 @@ public struct ClawDeskWorkspaceView: View {
                 selectedSpace = spaces.first
             }
             if let selectedSpace {
-                await loadChannels(space: selectedSpace)
+                await loadChannels(space: selectedSpace, useCache: true)
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -263,18 +309,33 @@ public struct ClawDeskWorkspaceView: View {
 
     private func selectSpace(_ space: Space) async {
         selectedSpace = space
-        selectedChannel = nil
-        await loadChannels(space: space)
+        if let cached = channelsBySpaceId[space.id] {
+            channels = cached
+            selectedChannel = cached.first
+        } else {
+            channels = []
+            selectedChannel = nil
+        }
+        await loadChannels(space: space, useCache: true)
     }
 
-    private func loadChannels(space: Space) async {
-        isLoadingChannels = true
+    private func loadChannels(space: Space, useCache: Bool) async {
+        if useCache, let cached = channelsBySpaceId[space.id], !cached.isEmpty {
+            channels = cached
+            if selectedChannel == nil || !cached.contains(where: { $0.id == selectedChannel?.id }) {
+                selectedChannel = cached.first
+            }
+        }
+        isLoadingChannels = channels.isEmpty
         errorMessage = nil
         do {
             let fetched = try await apiClient.fetchChannels(spaceId: space.id)
-            channels = fetched
-            if selectedChannel == nil || !fetched.contains(where: { $0.id == selectedChannel?.id }) {
-                selectedChannel = fetched.first
+            channelsBySpaceId[space.id] = fetched
+            if selectedSpace?.id == space.id {
+                channels = fetched
+                if selectedChannel == nil || !fetched.contains(where: { $0.id == selectedChannel?.id }) {
+                    selectedChannel = fetched.first
+                }
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -292,6 +353,7 @@ public struct ClawDeskWorkspaceView: View {
         do {
             let channel = try await apiClient.createChannel(spaceId: selectedSpace.id, name: name, type: selectedSpace.type, mode: "mixed")
             channels.append(channel)
+            channelsBySpaceId[selectedSpace.id] = channels
             selectedChannel = channel
             showCreateChannelSheet = false
             newChannelName = ""
@@ -305,6 +367,11 @@ public struct ClawDeskWorkspaceView: View {
             return space.name.components(separatedBy: "/").first?.trimmingCharacters(in: .whitespaces) ?? space.name
         }
         return String(space.name.prefix(3))
+    }
+
+    private func channelInitial(_ channel: Channel) -> String {
+        let trimmed = channel.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "#" : String(trimmed.prefix(1))
     }
 
     private func symbolName(for icon: String?) -> String {

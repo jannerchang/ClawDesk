@@ -30,7 +30,7 @@ public struct ChatView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            memberBar
+            chatHeader
 
             if isSelectionMode {
                 selectionBar
@@ -38,7 +38,7 @@ public struct ChatView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: 2) {
                         ForEach(messages) { message in
                             HStack {
                                 if isSelectionMode {
@@ -94,22 +94,11 @@ public struct ChatView: View {
             Divider()
             inputBar
         }
+        .background(Color(nsColor: .textBackgroundColor))
         .navigationTitle("# \(channel.name)")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(isSelectionMode ? "Cancel" : "Select") {
-                    withAnimation {
-                        isSelectionMode.toggle()
-                        if !isSelectionMode {
-                            selectedMessageIds.removeAll()
-                        }
-                    }
-                }
-            }
-        }
         .sheet(isPresented: $showCreateSubchannelSheet) {
             createSubchannelSheet
         }
@@ -122,6 +111,51 @@ public struct ChatView: View {
         .refreshable {
             await loadMessages()
         }
+    }
+
+    private var chatHeader: some View {
+        HStack(spacing: 12) {
+            Text(channel.name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1).isEmpty ? "#" : String(channel.name.prefix(1)))
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(Color(red: 0.18, green: 0.54, blue: 0.86))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(channel.name)
+                    .font(.system(size: 16, weight: .semibold))
+                    .lineLimit(1)
+                Text(headerSubtitle)
+                    .font(.caption)
+                    .foregroundStyle(isInvokingHermes ? Color(red: 0.18, green: 0.54, blue: 0.86) : .secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button(isSelectionMode ? "Cancel" : "Select") {
+                withAnimation {
+                    isSelectionMode.toggle()
+                    if !isSelectionMode {
+                        selectedMessageIds.removeAll()
+                    }
+                }
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(Divider(), alignment: .bottom)
+    }
+
+    private var headerSubtitle: String {
+        if isInvokingHermes {
+            return "Hermes is replying…"
+        }
+        let names = members.map(\.name)
+        return names.isEmpty ? "Janner · Hermes" : names.joined(separator: " · ")
     }
 
     private var memberBar: some View {
@@ -171,7 +205,7 @@ public struct ChatView: View {
     }
 
     private var inputBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Button {
                 showFileImporter = true
             } label: {
@@ -179,14 +213,21 @@ public struct ChatView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
                 }
             }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
             .disabled(isSending || isUploadingAttachment)
 
-            TextField("Message #\(channel.name)", text: $newMessageText, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
+            TextField("Message", text: $newMessageText, axis: .vertical)
+                .textFieldStyle(.plain)
                 .lineLimit(1...4)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .onSubmit {
                     Task { await sendMessage() }
                 }
@@ -199,11 +240,17 @@ public struct ChatView: View {
                         .controlSize(.small)
                 } else {
                     Image(systemName: "paperplane.fill")
+                        .font(.system(size: 16, weight: .semibold))
                 }
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color(red: 0.18, green: 0.54, blue: 0.86))
+            .frame(width: 34, height: 34)
             .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isUploadingAttachment)
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(nsColor: .controlBackgroundColor))
     }
 
     private var createSubchannelSheet: some View {

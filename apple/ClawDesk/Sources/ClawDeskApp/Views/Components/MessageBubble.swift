@@ -12,19 +12,23 @@ public struct MessageBubble: View {
     }
 
     public var body: some View {
-        HStack {
+        HStack(alignment: .bottom) {
             if isCurrentUser {
-                Spacer()
+                Spacer(minLength: 80)
             }
 
             VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 4) {
-                Text(message.senderName)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                if !isCurrentUser {
+                    Text(message.senderName)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 6)
+                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     renderedContent
                         .textSelection(.enabled)
+                        .font(.system(size: 14))
 
                     ForEach(attachments) { attachment in
                         AttachmentCard(attachment: attachment, isCurrentUser: isCurrentUser)
@@ -34,19 +38,22 @@ public struct MessageBubble: View {
                 .padding(.vertical, 8)
                 .background(bubbleColor)
                 .foregroundColor(isCurrentUser ? .white : .primary)
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: Color.black.opacity(0.04), radius: 1, y: 1)
 
                 Text(message.createdAt, style: .time)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
             }
+            .frame(maxWidth: 560, alignment: isCurrentUser ? .trailing : .leading)
 
             if !isCurrentUser {
-                Spacer()
+                Spacer(minLength: 80)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 2)
     }
 
     private var renderedContent: Text {
@@ -60,12 +67,12 @@ public struct MessageBubble: View {
 
     private var bubbleColor: Color {
         if isCurrentUser {
-            return .blue
+            return Color(red: 0.18, green: 0.54, blue: 0.86)
         }
         if message.senderType == "hermes" {
-            return Color.purple.opacity(0.16)
+            return Color(nsColor: .windowBackgroundColor)
         }
-        return Color.gray.opacity(0.2)
+        return Color.gray.opacity(0.16)
     }
 }
 
@@ -88,8 +95,8 @@ private struct AttachmentCard: View {
             }
         }
         .padding(8)
-        .background(isCurrentUser ? Color.white.opacity(0.14) : Color.white.opacity(0.55))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(isCurrentUser ? Color.white.opacity(0.14) : Color.gray.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var iconName: String {
