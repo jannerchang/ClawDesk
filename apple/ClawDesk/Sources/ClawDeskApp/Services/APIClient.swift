@@ -111,6 +111,24 @@ public final class APIClient {
     }
 
     @discardableResult
+    public func invokeLocalAgent(
+        channelId: String,
+        prompt: String,
+        agent: String = "shell",
+        workspace: String? = nil,
+        timeoutSeconds: Int = 120
+    ) async throws -> LocalAgentInvokeResponse {
+        let payload = LocalAgentInvokeRequest(
+            prompt: prompt,
+            agent: agent,
+            workspace: workspace,
+            timeoutSeconds: timeoutSeconds
+        )
+        let url = try makeURL(path: "channels/\(channelId)/agent/local")
+        return try await post(url: url, payload: payload, responseType: LocalAgentInvokeResponse.self)
+    }
+
+    @discardableResult
     public func uploadAttachment(messageId: String, fileURL: URL) async throws -> Attachment {
         let fileData = try Data(contentsOf: fileURL)
         let fileName = fileURL.lastPathComponent.isEmpty ? "attachment" : fileURL.lastPathComponent

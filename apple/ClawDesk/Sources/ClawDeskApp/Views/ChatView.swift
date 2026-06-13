@@ -11,9 +11,13 @@ public struct ChatView: View {
     @State private var isLoading = false
     @State private var isSending = false
     @State private var isInvokingHermes = false
+    @State private var isInvokingLocalAgent = false
     @State private var isUploadingAttachment = false
     @State private var errorMessage: String?
     @State private var infoMessage: String?
+    @State private var selectedReplyTarget: ReplyTarget = .hermes
+    @State private var localAgentKind: LocalAgentKind = .shell
+    @State private var localWorkspace = ProcessInfo.processInfo.environment["CLAWDESK_LOCAL_WORKSPACE"] ?? ""
 
     @State private var isSelectionMode = false
     @State private var selectedMessageIds = Set<String>()
@@ -23,6 +27,30 @@ public struct ChatView: View {
     @State private var isCreatingSubchannel = false
 
     private let apiClient = APIClient.shared
+
+    private enum ReplyTarget: String, CaseIterable, Identifiable {
+        case hermes = "Hermes"
+        case localAgent = "LocalAgent"
+
+        var id: String { rawValue }
+    }
+
+    private enum LocalAgentKind: String, CaseIterable, Identifiable {
+        case shell
+        case codex
+        case antigravity
+        case grok
+
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .shell: return "Shell"
+            case .codex: return "Codex"
+            case .antigravity: return "Antigravity"
+            case .grok: return "Grok"
+            }
+        }
+    }
 
     public init(channel: Channel) {
         self.channel = channel
@@ -154,8 +182,11 @@ public struct ChatView: View {
         if isInvokingHermes {
             return "Hermes is replying…"
         }
+        if isInvokingLocalAgent {
+            return "LocalAgent is working…"
+        }
         let names = members.map(\.name)
-        return names.isEmpty ? "Janner · Hermes" : names.joined(separator: " · ")
+        return names.isEmpty ? "Janner · Hermes · LocalAgent" : names.joined(separator: " · ")
     }
 
     private var memberBar: some View {
@@ -170,9 +201,9 @@ public struct ChatView: View {
                     Text(member.name)
                         .font(.caption)
                     if member.kind == "bot" {
-                        Text(isInvokingHermes && member.name == "Hermes" ? "replying" : "bot")
+                        Text(botStatus(for: member))
                             .font(.caption2)
-                            .foregroundStyle(isInvokingHermes && member.name == "Hermes" ? .purple : .secondary)
+                            .foregroundStyle(botStatusColor(for: member))
                     }
                 }
                 .padding(.horizontal, 8)
@@ -232,6 +263,33 @@ public struct ChatView: View {
                     Task { await sendMessage() }
                 }
 
+            Menu {
+                Picker("Reply Target", selection: $selectedReplyTarget) {
+                    ForEach(ReplyTarget.allCases) { target in
+                        Text(target.rawValue).tag(target)
+                    }
+                }
+                if selectedReplyTarget == .localAgent {
+                    Divider()
+                    Picker("Local Agent", selection: $localAgentKind) {
+                        ForEach(LocalAgentKind.allCases) { agent in
+                            Text(agent.label).tag(agent)
+                        }
+                    }
+                    TextField("Workspace", text: $localWorkspace)
+                }
+            } label: {
+                Text(selectedReplyTarget == .hermes ? "Hermes" : localAgentKind.label)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(selectedReplyTarget == .hermes ? Color.purple.opacity(0.12) : Color.orange.opacity(0.14))
+                    .clipShape(Capsule())
+            }
+            .menuStyle(.borderlessButton)
+            .disabled(isSending || isUploadingAttachment || isInvokingHermes || isInvokingLocalAgent)
+
             Button {
                 Task { await sendMessage() }
             } label: {
@@ -246,7 +304,7 @@ public struct ChatView: View {
             .buttonStyle(.plain)
             .foregroundStyle(Color(red: 0.18, green: 0.54, blue: 0.86))
             .frame(width: 34, height: 34)
-            .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isUploadingAttachment)
+            .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isUploadingAttachment || isInvokingHermes || isInvokingLocalAgent)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -340,7 +398,12 @@ public struct ChatView: View {
             let sentMessage = try await apiClient.sendMessage(channelId: channel.id, content: content)
             messages.append(sentMessage)
             infoMessage = nil
-            await triggerHermesReply()
+            switch selectedReplyTarget {
+            case .hermes:
+                await triggerHermesReply()
+            case .localAgent:
+                await triggerLocalAgent(prompt: content)
+            }
         } catch {
             infoMessage = "Failed to send message: \(error.localizedDescription)"
         }
@@ -360,6 +423,39 @@ public struct ChatView: View {
         } catch {
             infoMessage = "Failed to get Hermes reply: \(error.localizedDescription)"
         }
+    }
+
+    private func triggerLocalAgent(prompt: String) async {
+        guard !isInvokingLocalAgent else { return }
+
+        isInvokingLocalAgent = true
+        infoMessage = "LocalAgent is working with \(localAgentKind.label)…"
+        defer { isInvokingLocalAgent = false }
+
+        do {
+            let response = try await apiClient.invokeLocalAgent(
+                channelId: channel.id,
+                prompt: prompt,
+                agent: localAgentKind.rawValue,
+                workspace: localWorkspace.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : localWorkspace
+            )
+            upsertMessage(response.message)
+            infoMessage = "LocalAgent finished in \(response.workspace)"
+        } catch {
+            infoMessage = "Failed to run LocalAgent: \(error.localizedDescription)"
+        }
+    }
+
+    private func botStatus(for member: User) -> String {
+        if member.name == "Hermes", isInvokingHermes { return "replying" }
+        if member.name == "LocalAgent", isInvokingLocalAgent { return "working" }
+        return "bot"
+    }
+
+    private func botStatusColor(for member: User) -> Color {
+        if member.name == "Hermes", isInvokingHermes { return .purple }
+        if member.name == "LocalAgent", isInvokingLocalAgent { return .orange }
+        return .secondary
     }
 
     private func upsertMessage(_ message: Message) {

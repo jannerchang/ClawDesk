@@ -69,3 +69,43 @@ public struct HermesInvokeRequest: Codable, Hashable, Sendable {
         self.reasoning = reasoning
     }
 }
+
+public struct LocalAgentInvokeResponse: Codable, Hashable, Sendable {
+    public let agentRun: AgentRun
+    public let message: Message
+    public let command: [String]
+    public let workspace: String
+
+    enum CodingKeys: String, CodingKey {
+        case agentRun = "agent_run"
+        case message
+        case command
+        case workspace
+    }
+}
+
+public struct LocalAgentInvokeRequest: Codable, Hashable, Sendable {
+    public let prompt: String
+    public let agent: String
+    public let workspace: String?
+    public let timeoutSeconds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case prompt
+        case agent
+        case workspace
+        case timeoutSeconds = "timeout_seconds"
+    }
+
+    public init(
+        prompt: String,
+        agent: String = "shell",
+        workspace: String? = nil,
+        timeoutSeconds: Int = 120
+    ) {
+        self.prompt = prompt
+        self.agent = agent
+        self.workspace = workspace
+        self.timeoutSeconds = timeoutSeconds
+    }
+}
