@@ -165,6 +165,8 @@ Architecture note: [`../architecture/two-bot-local-workspace.md`](../architectur
 
 LocalAgent bridge runbook: [`mattermost-local-agent-bridge.md`](mattermost-local-agent-bridge.md).
 
+Hermes bridge runbook: [`mattermost-hermes-bridge.md`](mattermost-hermes-bridge.md).
+
 ## Backup notes
 
 Back up at least:

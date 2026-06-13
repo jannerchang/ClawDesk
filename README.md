@@ -90,6 +90,8 @@ Full notes: [`docs/deploy/mattermost-local-tailscale.md`](docs/deploy/mattermost
 
 LocalAgent bridge notes: [`docs/deploy/mattermost-local-agent-bridge.md`](docs/deploy/mattermost-local-agent-bridge.md).
 
+Hermes bridge notes: [`docs/deploy/mattermost-hermes-bridge.md`](docs/deploy/mattermost-hermes-bridge.md).
+
 ## Two-bot workspace model
 
 The preferred agent model uses two Mattermost bot identities:
