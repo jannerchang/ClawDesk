@@ -15,12 +15,12 @@ Self-hosted Mattermost on Home server / Mac mini
         ↓
 Local PostgreSQL + local file storage
         ↓
-Hermes / OpenClaw bridge
-        ↓
-Obsidian / local files / agent workflows
+Two visible bots:
+  - @Hermes for the home Hermes/OpenClaw hub
+  - @LocalAgent for workstation-local Codex / Antigravity / Grok Build
 ```
 
-Mattermost is the first practical self-hosted communication base because it already provides Discord/Slack-like channels, direct messages, mobile clients, file uploads, bot/webhook APIs, and local storage. Matrix / Element, Zulip, Nextcloud Talk, AppFlowy, AFFiNE, and Obsidian integrations remain candidates for later borrowing or integration.
+Mattermost is the first practical self-hosted communication base because it already provides Discord/Slack-like channels, direct messages, mobile clients, file uploads, bot/webhook APIs, and local storage. ClawDesk then adds the agent-workbench layer: `@Hermes` handles long-running/home-side assistant work, while `@LocalAgent` runs current-machine coding agents directly. Matrix / Element, Zulip, Nextcloud Talk, AppFlowy, AFFiNE, and Obsidian integrations remain candidates for later borrowing or integration.
 
 ## Goals
 
@@ -28,7 +28,7 @@ Mattermost is the first practical self-hosted communication base because it alre
 - Run the communication server locally or on a trusted home machine.
 - Access it over LAN or Tailscale instead of exposing it publicly.
 - Reuse open-source infrastructure where it is already good enough.
-- Add Hermes / OpenClaw as visible bot participants rather than building a separate agent launcher first.
+- Add two visible bot participants: `@Hermes` for the home assistant hub and `@LocalAgent` for local workstation tools.
 - Later provide a polished Apple/iOS experience for personal and small-team use.
 
 ## Repository layout
@@ -38,6 +38,7 @@ server/                FastAPI + SQLite prototype from the earlier native ClawDe
 apple/                 SwiftUI client package skeleton from the earlier native ClawDesk path
 deploy/mattermost/     Local Mattermost deployment starter for LAN/Tailscale use
 docs/deploy/           Deployment notes, including Mattermost + Tailscale
+docs/architecture/     Architecture notes, including the two-bot local workspace model
 planning/              FFCS planning artifacts
 scripts/               Smoke-test helpers
 ```
@@ -86,6 +87,15 @@ http://127.0.0.1:8065
 or the configured LAN/Tailscale URL. Mattermost data, uploaded files, config, logs, and PostgreSQL data stay under `deploy/mattermost/mattermost/`, which is intentionally ignored by git.
 
 Full notes: [`docs/deploy/mattermost-local-tailscale.md`](docs/deploy/mattermost-local-tailscale.md).
+
+## Two-bot workspace model
+
+The preferred agent model uses two Mattermost bot identities:
+
+- `@Hermes`: backed by the home Hermes/OpenClaw hub for long-running assistant work, memory, archive, scheduled/background jobs, and home-side services.
+- `@LocalAgent`: backed by a lightweight ClawDesk runner on the current workstation for local Codex, Antigravity, Grok Build, shell/build/test tasks, and current-project operations.
+
+This keeps workstation work direct: the office/current machine does not need a full Hermes install just to run local coding agents. Details: [`docs/architecture/two-bot-local-workspace.md`](docs/architecture/two-bot-local-workspace.md).
 
 ## Earlier native prototype
 
@@ -257,5 +267,5 @@ Then set the Office client Backend URL to the Hermes machine's Tailscale URL, fo
 Current phase:
 
 - primary direction: self-hosted Mattermost over LAN/Tailscale for local message and file ownership;
-- next integration: Hermes/OpenClaw bot bridge into Mattermost channels;
+- next integration: two Mattermost bots, `@Hermes` and `@LocalAgent`, plus an `Agents/local-work` channel;
 - retained native prototype: FastAPI + SQLite + SwiftUI client, useful for Apple-native UX experiments and custom Hermes workflows.

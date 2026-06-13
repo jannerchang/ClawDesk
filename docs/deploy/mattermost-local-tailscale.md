@@ -129,7 +129,7 @@ Agents
   - logs
 ```
 
-## Hermes/OpenClaw bridge plan
+## Two-bot agent workspace plan
 
 Mattermost should own communication primitives:
 
@@ -139,25 +139,29 @@ Mattermost should own communication primitives:
 - file uploads;
 - mobile/desktop clients.
 
-Hermes/OpenClaw should join as bot participants:
+Hermes/OpenClaw and the workstation-local runner should join as separate bot participants:
 
 ```text
 Mattermost channel message
         ↓ outgoing webhook / bot websocket / plugin
-Hermes bridge
+Mention/channel routing
+        ├── @Hermes      → home Hermes/OpenClaw bridge
+        └── @LocalAgent  → current-machine ClawDesk local runner
         ↓
-Hermes CLI/API/OpenClaw
-        ↓
-Bot reply back into Mattermost channel
+Bot reply back into the same Mattermost channel/thread
 ```
 
 Minimum next bridge:
 
-1. create a Mattermost bot account or personal access token;
-2. listen for `@Hermes` mentions or a dedicated `Agents/hermes` channel;
-3. fetch recent channel context and attached file metadata as needed;
-4. call local Hermes;
-5. post the reply back as the Hermes bot.
+1. create two Mattermost bot accounts: `Hermes` and `LocalAgent`;
+2. create an `Agents/local-work` channel for workstation-local jobs;
+3. let `@Hermes` listen for mentions or a dedicated `Agents/hermes` channel;
+4. let `@LocalAgent` listen only for explicit mentions or messages in `Agents/local-work`;
+5. route `@Hermes` to the home Hermes/OpenClaw bridge;
+6. route `@LocalAgent` to local Codex / Antigravity / Grok Build subprocesses;
+7. post results back as the corresponding bot.
+
+Architecture note: [`../architecture/two-bot-local-workspace.md`](../architecture/two-bot-local-workspace.md).
 
 ## Backup notes
 
