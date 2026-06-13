@@ -39,6 +39,7 @@ apple/                 SwiftUI client package skeleton from the earlier native C
 deploy/mattermost/     Local Mattermost deployment starter for LAN/Tailscale use
 docs/deploy/           Deployment notes, including Mattermost + Tailscale
 docs/architecture/     Architecture notes, including the two-bot local workspace model
+docs/research/         Open-source reuse scans and fork/import decisions
 planning/              FFCS planning artifacts
 scripts/               Smoke-test helpers
 ```
@@ -104,6 +105,8 @@ This keeps workstation work direct: the office/current machine does not need a f
 Bot-in-channel behavior is modeled as session bindings: [`docs/architecture/bot-session-bindings.md`](docs/architecture/bot-session-bindings.md).
 
 Module status can be bound to external posts for targeted updates: [`docs/architecture/module-post-sync.md`](docs/architecture/module-post-sync.md).
+
+Open-source reuse scan: [`docs/research/open-source-reuse-map.md`](docs/research/open-source-reuse-map.md). Current verdict: reuse WeSight for desktop/local-agent workspace patterns, Local Agent Gateway for provider/session/channel-gateway patterns, and Pan UI for Hermes gateway/runtime/profile management patterns.
 
 ## Earlier native prototype
 
