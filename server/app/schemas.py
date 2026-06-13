@@ -63,6 +63,36 @@ class UserOut(BaseModel):
     updated_at: str
 
 
+class ChannelBotBindingCreate(BaseModel):
+    user_id: str
+    bot_kind: Literal["hermes", "local-agent"]
+    session_key: str | None = None
+    listen_mode: Literal["mention", "channel", "manual"] = "mention"
+    enabled: bool = True
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChannelBotBindingUpdate(BaseModel):
+    session_key: str | None = None
+    listen_mode: Literal["mention", "channel", "manual"] | None = None
+    enabled: bool | None = None
+    config: dict[str, Any] | None = None
+
+
+class ChannelBotBindingOut(BaseModel):
+    id: str
+    channel_id: str
+    user_id: str
+    user_name: str | None = None
+    bot_kind: str
+    session_key: str
+    listen_mode: str
+    enabled: bool
+    config: dict[str, Any]
+    created_at: str
+    updated_at: str
+
+
 class MessageCreate(BaseModel):
     sender_type: str = "user"
     sender_name: str = "Janner"
@@ -158,3 +188,12 @@ def channel_from_row(row: dict[str, Any]) -> ChannelOut:
     data["tags"] = loads_json(data.get("tags"))
     data["source_message_ids"] = loads_json(data.get("source_message_ids"))
     return ChannelOut(**data)
+
+
+def bot_binding_from_row(row: dict[str, Any]) -> ChannelBotBindingOut:
+    from app.db import loads_json
+
+    data = dict(row)
+    data["enabled"] = bool(data.get("enabled"))
+    data["config"] = loads_json(data.get("config"))
+    return ChannelBotBindingOut(**data)

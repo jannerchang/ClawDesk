@@ -24,6 +24,12 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         tech_channels = client.get(f"/spaces/{tech['id']}/channels").json()
         assert any(channel["name"] == "随手聊" for channel in inbox_channels)
         assert any(channel["name"] == "技术聊天" for channel in tech_channels)
+        local_work = next(channel for channel in tech_channels if channel["name"] == "Local Work")
+        local_bindings = client.get(f"/channels/{local_work['id']}/bot-bindings").json()
+        local_agent_binding = next(binding for binding in local_bindings if binding["user_name"] == "LocalAgent")
+        assert local_agent_binding["bot_kind"] == "local-agent"
+        assert local_agent_binding["listen_mode"] == "channel"
+        assert local_agent_binding["session_key"].startswith("local-agent:")
         space_id = spaces[0]["id"]
 
         channel = client.post(
@@ -56,6 +62,18 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         assert members[0]["kind"] == "human"
         assert members[1]["kind"] == "bot"
         assert members[2]["kind"] == "bot"
+
+        bindings = client.get(f"/channels/{channel_id}/bot-bindings").json()
+        assert {binding["user_name"] for binding in bindings} == {"Hermes", "LocalAgent"}
+        hermes_binding = next(binding for binding in bindings if binding["user_name"] == "Hermes")
+        assert hermes_binding["listen_mode"] == "mention"
+        updated_binding = client.patch(
+            f"/channels/{channel_id}/bot-bindings/{hermes_binding['id']}",
+            json={"listen_mode": "channel", "session_key": "hermes:test-session", "config": {"profile": "default"}},
+        ).json()
+        assert updated_binding["listen_mode"] == "channel"
+        assert updated_binding["session_key"] == "hermes:test-session"
+        assert updated_binding["config"] == {"profile": "default"}
 
         subchannel = client.post(
             f"/channels/{channel_id}/subchannels/from_messages",

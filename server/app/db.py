@@ -124,6 +124,20 @@ def init_db() -> None:
                 PRIMARY KEY (channel_id, user_id)
             );
 
+            CREATE TABLE IF NOT EXISTS channel_bot_bindings (
+                id TEXT PRIMARY KEY,
+                channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                bot_kind TEXT NOT NULL,
+                session_key TEXT NOT NULL,
+                listen_mode TEXT NOT NULL DEFAULT 'mention',
+                enabled INTEGER NOT NULL DEFAULT 1,
+                config TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(channel_id, user_id)
+            );
+
             CREATE TABLE IF NOT EXISTS messages (
                 id TEXT PRIMARY KEY,
                 channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
@@ -194,6 +208,7 @@ def init_db() -> None:
             )
         seed_default_channels(conn)
         seed_default_channel_members(conn)
+        seed_default_bot_bindings(conn)
 
 
 def seed_default_users(conn: sqlite3.Connection) -> None:
@@ -220,6 +235,37 @@ def seed_default_channel_members(conn: sqlite3.Connection) -> None:
                 """,
                 (channel["id"], user_id, role, ts),
             )
+
+
+def seed_default_bot_bindings(conn: sqlite3.Connection) -> None:
+    ts = now_iso()
+    rows = conn.execute(
+        """
+        SELECT channels.id AS channel_id, channels.name AS channel_name,
+               users.id AS user_id, users.name AS user_name
+        FROM channel_members
+        JOIN channels ON channels.id = channel_members.channel_id
+        JOIN users ON users.id = channel_members.user_id
+        WHERE users.kind = 'bot'
+        """
+    ).fetchall()
+    for row in rows:
+        bot_kind = "local-agent" if row["user_id"] == "bot_local_agent" else "hermes"
+        listen_mode = "channel" if (
+            row["channel_name"] == "Local Work" and bot_kind == "local-agent"
+        ) or (
+            row["channel_name"] == "Hermes / OpenClaw" and bot_kind == "hermes"
+        ) else "mention"
+        session_key = f"{bot_kind}:{row['channel_id']}"
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO channel_bot_bindings (
+                id, channel_id, user_id, bot_kind, session_key, listen_mode,
+                enabled, config, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 1, '{}', ?, ?)
+            """,
+            (new_id(), row["channel_id"], row["user_id"], bot_kind, session_key, listen_mode, ts, ts),
+        )
 
 
 def seed_default_channels(conn: sqlite3.Connection) -> None:

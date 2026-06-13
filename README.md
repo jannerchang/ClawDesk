@@ -101,6 +101,8 @@ The preferred agent model uses two Mattermost bot identities:
 
 This keeps workstation work direct: the office/current machine does not need a full Hermes install just to run local coding agents. Details: [`docs/architecture/two-bot-local-workspace.md`](docs/architecture/two-bot-local-workspace.md).
 
+Bot-in-channel behavior is modeled as session bindings: [`docs/architecture/bot-session-bindings.md`](docs/architecture/bot-session-bindings.md).
+
 ## Earlier native prototype
 
 The existing FastAPI + SwiftUI prototype is kept as a native-client exploration path. It remains useful for Hermes-specific UX and Apple-native experiments, but it is no longer the only or default path.
