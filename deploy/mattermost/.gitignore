@@ -1,0 +1,3 @@
+# Runtime Mattermost data stays local and can contain messages/files.
+mattermost/
+.env

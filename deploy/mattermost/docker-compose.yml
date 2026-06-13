@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${MM_POSTGRES_USER:-mmuser}
+      POSTGRES_PASSWORD: ${MM_POSTGRES_PASSWORD:-mm-password-change-me}
+      POSTGRES_DB: ${MM_POSTGRES_DB:-mattermost}
+    volumes:
+      - ./mattermost/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${MM_HOST:-127.0.0.1}:${MM_PORT:-8065}:8065"
+    environment:
+      MM_SERVICESETTINGS_SITEURL: ${MM_SITEURL:-http://127.0.0.1:8065}
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: "postgres://${MM_POSTGRES_USER:-mmuser}:${MM_POSTGRES_PASSWORD:-mm-password-change-me}@postgres:5432/${MM_POSTGRES_DB:-mattermost}?sslmode=disable&connect_timeout=10"
+      MM_FILESETTINGS_DRIVERNAME: local
+      MM_FILESETTINGS_DIRECTORY: /mattermost/data
+    volumes:
+      - ./mattermost/config:/mattermost/config
+      - ./mattermost/data:/mattermost/data
+      - ./mattermost/logs:/mattermost/logs
+      - ./mattermost/plugins:/mattermost/plugins
+      - ./mattermost/client/plugins:/mattermost/client/plugins
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8065/api/v4/system/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 10

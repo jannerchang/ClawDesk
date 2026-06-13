@@ -1,17 +1,97 @@
 # ClawDesk
 
-ClawDesk 是一个 Apple 原生、Telegram-like 的私人 Agent 通道客户端，用于让 Janner 通过自有界面与 Hermes / OpenClaw 等本地或远程 agent 系统交互。项目第一阶段聚焦基础通信：空间/频道、用户与 bot 成员、消息、Markdown、附件、后端连接设置与健康检查；后续逐步接入语音、图片、文件、本地 agent 控制和主题沉淀能力。核心定位不是自研 agent harness，而是作为 Discord / Telegram 之外更可控、更贴合个人工作流的私有通道。
+ClawDesk 正在转向一个更务实的目标：**本地自托管、可经 Tailscale 访问的局域网版 Discord / Telegram + Hermes/OpenClaw Agent 工作台**。
+
+它不是为了把所有聊天、同步、文件系统从零重写一遍；相反，ClawDesk 会优先复用成熟开源通信底座，把法院工作、家庭协作、研究材料和 Agent 对话的数据主权留在本地。核心边界是：消息、文件、附件、索引和 Agent 上下文默认保存在 Janner 自己的 Mac mini / Home server / 局域网存储上；远程访问走 Tailscale，不依赖 Discord 存储敏感材料。
+
+## Direction
+
+Current preferred deployment path:
+
+```text
+iPhone / iPad / Mac / Web client
+        ↓ LAN or Tailscale
+Self-hosted Mattermost on Home server / Mac mini
+        ↓
+Local PostgreSQL + local file storage
+        ↓
+Hermes / OpenClaw bridge
+        ↓
+Obsidian / local files / agent workflows
+```
+
+Mattermost is the first practical self-hosted communication base because it already provides Discord/Slack-like channels, direct messages, mobile clients, file uploads, bot/webhook APIs, and local storage. Matrix / Element, Zulip, Nextcloud Talk, AppFlowy, AFFiNE, and Obsidian integrations remain candidates for later borrowing or integration.
+
+## Goals
+
+- Keep court-related messages and files off Discord and third-party chat storage.
+- Run the communication server locally or on a trusted home machine.
+- Access it over LAN or Tailscale instead of exposing it publicly.
+- Reuse open-source infrastructure where it is already good enough.
+- Add Hermes / OpenClaw as visible bot participants rather than building a separate agent launcher first.
+- Later provide a polished Apple/iOS experience for Janner and family use.
 
 ## Repository layout
 
 ```text
-server/       FastAPI + SQLite backend prototype
-apple/        SwiftUI client package skeleton
-planning/     FFCS planning artifacts
-scripts/      Smoke-test helpers
+server/                FastAPI + SQLite prototype from the earlier native ClawDesk path
+apple/                 SwiftUI client package skeleton from the earlier native ClawDesk path
+deploy/mattermost/     Local Mattermost deployment starter for LAN/Tailscale use
+docs/deploy/           Deployment notes, including Mattermost + Tailscale
+planning/              FFCS planning artifacts
+scripts/               Smoke-test helpers
 ```
 
-## Backend quick start
+## Mattermost local deployment starter
+
+The first self-hosted path lives under:
+
+```text
+deploy/mattermost/
+```
+
+Create a local `.env` from the example:
+
+```bash
+cd deploy/mattermost
+cp .env.example .env
+```
+
+Edit `.env` before first start, especially the PostgreSQL password and site URL. For local-only testing:
+
+```bash
+MM_HOST=127.0.0.1
+MM_SITEURL=http://127.0.0.1:8065
+```
+
+For LAN/Tailscale access from other devices, bind on all interfaces and set a LAN or Tailscale URL:
+
+```bash
+MM_HOST=0.0.0.0
+MM_SITEURL=http://<home-machine-tailscale-ip-or-dns>:8065
+```
+
+Start:
+
+```bash
+docker compose up -d
+```
+
+Open:
+
+```text
+http://127.0.0.1:8065
+```
+
+or the configured LAN/Tailscale URL. Mattermost data, uploaded files, config, logs, and PostgreSQL data stay under `deploy/mattermost/mattermost/`, which is intentionally ignored by git.
+
+Full notes: [`docs/deploy/mattermost-local-tailscale.md`](docs/deploy/mattermost-local-tailscale.md).
+
+## Earlier native prototype
+
+The existing FastAPI + SwiftUI prototype is kept as a native-client exploration path. It remains useful for Hermes-specific UX and Apple-native experiments, but it is no longer the only or default path.
+
+### Backend quick start
 
 ```bash
 cd server
@@ -82,7 +162,7 @@ GET /messages/{message_id}/attachments
 
 Uploads use `multipart/form-data` field `file`. Files are stored under the local backend data directory and metadata is recorded in SQLite. This is the Phase 0.5 foundation for images, photos, files, and voice; Hermes does not interpret attachments yet.
 
-## SwiftUI client build/run
+### SwiftUI client build/run
 
 ```bash
 swift build --package-path apple/ClawDesk
@@ -174,15 +254,8 @@ Then set the Office client Backend URL to the Hermes machine's Tailscale URL, fo
 
 ## Current phase
 
-Phase 0/1 prototype:
+Current phase:
 
-- default Spaces and starter Channels;
-- Janner human user and Hermes bot member model;
-- Space / Channel / Message / Attachment APIs;
-- create subchannel from selected messages;
-- SwiftUI Space → Channel → Chat usable client shell with backend status, channel creation, member bar, message sending, Hermes bot replies, and attachment cards;
-- SwiftUI selected-message flow wired to the backend subchannel API;
-- Markdown rendering in message bubbles;
-- backend URL setting and health check in the SwiftUI client;
-- file attachment upload entry in the SwiftUI client;
-- Hermes adapter endpoint, with auto/cli/stub modes and real Hermes smoke coverage.
+- primary direction: self-hosted Mattermost over LAN/Tailscale for local message and file ownership;
+- next integration: Hermes/OpenClaw bot bridge into Mattermost channels;
+- retained native prototype: FastAPI + SQLite + SwiftUI client, useful for Apple-native UX experiments and custom Hermes workflows.
