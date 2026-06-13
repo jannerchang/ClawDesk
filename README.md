@@ -2,7 +2,7 @@
 
 ClawDesk 正在转向一个更务实的目标：**本地自托管、可经 Tailscale 访问的局域网版 Discord / Telegram + Hermes/OpenClaw Agent 工作台**。
 
-它不是为了把所有聊天、同步、文件系统从零重写一遍；相反，ClawDesk 会优先复用成熟开源通信底座，把法院工作、家庭协作、研究材料和 Agent 对话的数据主权留在本地。核心边界是：消息、文件、附件、索引和 Agent 上下文默认保存在 Janner 自己的 Mac mini / Home server / 局域网存储上；远程访问走 Tailscale，不依赖 Discord 存储敏感材料。
+它不是为了把所有聊天、同步、文件系统从零重写一遍；相反，ClawDesk 会优先复用成熟开源通信底座，把个人协作、资料管理和 Agent 对话的数据主权留在本地。核心边界是：消息、文件、附件、索引和 Agent 上下文默认保存在用户自己的 Mac mini / Home server / 局域网存储上；远程访问走 Tailscale，不依赖第三方聊天平台存储敏感材料。
 
 ## Direction
 
@@ -24,12 +24,12 @@ Mattermost is the first practical self-hosted communication base because it alre
 
 ## Goals
 
-- Keep court-related messages and files off Discord and third-party chat storage.
+- Keep private messages and files off third-party chat storage.
 - Run the communication server locally or on a trusted home machine.
 - Access it over LAN or Tailscale instead of exposing it publicly.
 - Reuse open-source infrastructure where it is already good enough.
 - Add Hermes / OpenClaw as visible bot participants rather than building a separate agent launcher first.
-- Later provide a polished Apple/iOS experience for Janner and family use.
+- Later provide a polished Apple/iOS experience for personal and small-team use.
 
 ## Repository layout
 

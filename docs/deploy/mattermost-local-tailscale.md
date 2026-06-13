@@ -10,7 +10,7 @@ Use Mattermost as a LAN/Tailscale version of Discord or Telegram:
 - uploaded files stay on the local server filesystem;
 - iOS, macOS, desktop, and web clients can connect;
 - Hermes/OpenClaw can later join as bot participants through webhooks, bot tokens, or plugins;
-- court-related files and discussions do not need to live on Discord.
+- private files and discussions do not need to live on third-party chat platforms.
 
 ## Directory layout
 
@@ -101,25 +101,23 @@ Recommended access boundary:
 
 - prefer Tailscale and LAN;
 - do not expose Mattermost directly to the public Internet unless you have a real reverse proxy, TLS, update, backup, and hardening plan;
-- for family use, invite accounts after confirming Tailscale or LAN reachability.
+- for trusted users, invite accounts after confirming Tailscale or LAN reachability.
 
 ## Suggested initial channels
 
 ```text
-Court Work
+Work
   - daily
-  - case-discussion
+  - discussion
   - documents
-  - collegial-panel
   - archive-candidates
 
 Research
-  - micro-entity-employment
   - literature
-  - cases
+  - notes
   - data
 
-Family
+Personal
   - home
   - files
   - photos
