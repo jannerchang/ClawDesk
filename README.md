@@ -88,6 +88,8 @@ or the configured LAN/Tailscale URL. Mattermost data, uploaded files, config, lo
 
 Full notes: [`docs/deploy/mattermost-local-tailscale.md`](docs/deploy/mattermost-local-tailscale.md).
 
+LocalAgent bridge notes: [`docs/deploy/mattermost-local-agent-bridge.md`](docs/deploy/mattermost-local-agent-bridge.md).
+
 ## Two-bot workspace model
 
 The preferred agent model uses two Mattermost bot identities:

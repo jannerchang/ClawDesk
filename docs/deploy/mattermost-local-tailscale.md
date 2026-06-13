@@ -163,6 +163,8 @@ Minimum next bridge:
 
 Architecture note: [`../architecture/two-bot-local-workspace.md`](../architecture/two-bot-local-workspace.md).
 
+LocalAgent bridge runbook: [`mattermost-local-agent-bridge.md`](mattermost-local-agent-bridge.md).
+
 ## Backup notes
 
 Back up at least:
