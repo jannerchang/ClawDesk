@@ -199,6 +199,7 @@ You can also configure the backend URL in the client settings panel.
 - Space / Channel / Message APIs provide the base communication model.
 - `GET /channels/{channel_id}/members` returns human/bot participants.
 - `POST /channels/{channel_id}/agent/hermes` asks Hermes to respond in a channel.
+- `POST /channels/{channel_id}/agent/local` asks the current-machine LocalAgent runner to respond in a channel.
 - `POST /messages/{message_id}/attachments` uploads a file attachment.
 - `GET /messages/{message_id}/attachments` lists attachments for a message.
 

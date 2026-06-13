@@ -134,6 +134,20 @@ class HermesInvokeOut(BaseModel):
     message: MessageOut
 
 
+class LocalAgentInvokeCreate(BaseModel):
+    prompt: str
+    agent: Literal["codex", "antigravity", "agy", "grok", "grok-build", "shell"] = "shell"
+    workspace: str | None = None
+    timeout_seconds: int = Field(default=120, ge=1, le=600)
+
+
+class LocalAgentInvokeOut(BaseModel):
+    agent_run: AgentRunOut
+    message: MessageOut
+    command: list[str]
+    workspace: str
+
+
 def agent_run_from_row(row: dict[str, Any]) -> AgentRunOut:
     return AgentRunOut(**dict(row))
 

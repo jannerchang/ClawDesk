@@ -9,6 +9,8 @@ from app.main import app
 def test_health_and_crud_flow(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAWDESK_DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("CLAWDESK_HERMES_MODE", "stub")
+    monkeypatch.setenv("CLAWDESK_LOCAL_AGENT_MODE", "stub")
+    monkeypatch.setenv("CLAWDESK_LOCAL_AGENT_WORKSPACE_ROOT", str(tmp_path))
     with TestClient(app) as client:
         health = client.get("/health").json()
         assert health["ok"] is True
@@ -50,9 +52,10 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         assert [item["id"] for item in messages] == [message["id"]]
 
         members = client.get(f"/channels/{channel_id}/members").json()
-        assert [member["name"] for member in members] == ["Janner", "Hermes"]
+        assert [member["name"] for member in members] == ["Janner", "Hermes", "LocalAgent"]
         assert members[0]["kind"] == "human"
         assert members[1]["kind"] == "bot"
+        assert members[2]["kind"] == "bot"
 
         subchannel = client.post(
             f"/channels/{channel_id}/subchannels/from_messages",
@@ -62,7 +65,7 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         assert subchannel["source_message_ids"] == [message["id"]]
 
         sub_members = client.get(f"/channels/{subchannel['id']}/members").json()
-        assert [member["name"] for member in sub_members] == ["Janner", "Hermes"]
+        assert [member["name"] for member in sub_members] == ["Janner", "Hermes", "LocalAgent"]
 
         copied = client.get(f"/channels/{subchannel['id']}/messages").json()
         assert len(copied) == 1
@@ -77,6 +80,19 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         assert hermes["message"]["sender_type"] == "hermes"
         assert hermes["message"]["sender_name"] == "Hermes"
         assert hermes["message"]["content"].startswith("[Hermes stub]")
+
+        local = client.post(
+            f"/channels/{channel_id}/agent/local",
+            json={"prompt": "printf local-ok", "agent": "shell", "workspace": str(tmp_path)},
+        ).json()
+        assert local["agent_run"]["status"] == "stubbed"
+        assert local["agent_run"]["agent"] == "local-agent"
+        assert local["agent_run"]["model"] == "shell"
+        assert local["message"]["sender_type"] == "local-agent"
+        assert local["message"]["sender_name"] == "LocalAgent"
+        assert local["message"]["content"].startswith("[LocalAgent stub]")
+        assert local["command"] == ["/bin/bash", "-lc", "printf local-ok"]
+        assert local["workspace"] == str(tmp_path)
 
         with get_conn() as conn:
             run_count = conn.execute("SELECT COUNT(*) AS c FROM agent_runs WHERE id = ?", (hermes["agent_run"]["id"],)).fetchone()["c"]

@@ -12,6 +12,7 @@ from app.utils import new_id, now_iso
 DEFAULT_USERS = [
     ("user_janner", "Janner", "human", "J", None),
     ("bot_hermes", "Hermes", "bot", "H", "Hermes / OpenClaw"),
+    ("bot_local_agent", "LocalAgent", "bot", "L", "Local workstation agent runner"),
 ]
 
 DEFAULT_SPACES = [
@@ -30,6 +31,7 @@ DEFAULT_CHANNELS_BY_SPACE_TYPE = {
     "tech": [
         ("技术聊天", "tech", "mixed", "技佐入口：技术闲聊、排障、工具开发，可从聊天生成子频道。", ["技佐", "技术"]),
         ("Hermes / OpenClaw", "tech", "mixed", "Hermes、OpenClaw、Gateway、模型与 agent 工作流。", ["Hermes", "OpenClaw"]),
+        ("Local Work", "tech", "mixed", "本机 Codex、Antigravity、Grok Build 与 shell 工作频道。", ["LocalAgent", "local-work"]),
     ],
     "case": [
         ("案件入口", "case", "mixed", "合议庭案件讨论入口。", ["案件"]),
@@ -210,7 +212,7 @@ def seed_default_channel_members(conn: sqlite3.Connection) -> None:
     ts = now_iso()
     channels = conn.execute("SELECT id FROM channels").fetchall()
     for channel in channels:
-        for user_id, role in (("user_janner", "owner"), ("bot_hermes", "bot")):
+        for user_id, role in (("user_janner", "owner"), ("bot_hermes", "bot"), ("bot_local_agent", "bot")):
             conn.execute(
                 """
                 INSERT OR IGNORE INTO channel_members (channel_id, user_id, role, created_at)
