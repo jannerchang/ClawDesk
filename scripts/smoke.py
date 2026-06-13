@@ -96,7 +96,9 @@ def main() -> int:
             {"space_id": inbox["id"], "name": "Smoke 技术聊天", "type": "tech", "mode": "mixed"},
         ))
         members = cast(list[dict[str, Any]], request("GET", f"/channels/{channel['id']}/members"))
-        assert [member["name"] for member in members] == ["Janner", "Hermes"], members
+        member_names = [member["name"] for member in members]
+        assert member_names[:2] == ["Janner", "Hermes"], members
+        assert "LocalAgent" in member_names, members
         message = cast(dict[str, Any], request("POST", f"/channels/{channel['id']}/messages", {"content": "第一条 smoke 消息"}))
         attachment = cast(dict[str, Any], upload_file(
             f"/messages/{message['id']}/attachments",
