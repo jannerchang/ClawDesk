@@ -115,3 +115,39 @@ def test_health_and_crud_flow(tmp_path, monkeypatch):
         with get_conn() as conn:
             run_count = conn.execute("SELECT COUNT(*) AS c FROM agent_runs WHERE id = ?", (hermes["agent_run"]["id"],)).fetchone()["c"]
             assert run_count == 1
+
+
+def test_module_post_binding_flow(tmp_path, monkeypatch):
+    monkeypatch.setenv("CLAWDESK_DB_PATH", str(tmp_path / "module-posts.db"))
+    with TestClient(app) as client:
+        created = client.post(
+            "/module-post-bindings",
+            json={
+                "module_key": "local-agent-bridge",
+                "module_label": "LocalAgent Bridge",
+                "platform": "mattermost",
+                "external_channel_id": "channel-1",
+                "external_post_id": "post-1",
+                "sync_mode": "manual",
+            },
+        ).json()
+        assert created["module_key"] == "local-agent-bridge"
+        assert created["last_payload"] is None
+
+        listed = client.get("/module-post-bindings", params={"module_key": "local-agent-bridge"}).json()
+        assert [item["id"] for item in listed] == [created["id"]]
+
+        updated = client.patch(
+            f"/module-post-bindings/{created['id']}",
+            json={"module_label": "LocalAgent Bridge v1", "sync_mode": "on_change"},
+        ).json()
+        assert updated["module_label"] == "LocalAgent Bridge v1"
+        assert updated["sync_mode"] == "on_change"
+
+        synced = client.post(
+            f"/module-post-bindings/{created['id']}/sync",
+            json={"title": "LocalAgent Bridge", "status": "green", "details": {"tests": "passed"}},
+        ).json()
+        assert synced["last_synced_at"] is not None
+        assert synced["last_payload"]["status"] == "green"
+        assert synced["last_payload"]["details"] == {"tests": "passed"}

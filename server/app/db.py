@@ -138,6 +138,21 @@ def init_db() -> None:
                 UNIQUE(channel_id, user_id)
             );
 
+            CREATE TABLE IF NOT EXISTS module_post_bindings (
+                id TEXT PRIMARY KEY,
+                module_key TEXT NOT NULL,
+                module_label TEXT NOT NULL,
+                platform TEXT NOT NULL,
+                external_channel_id TEXT NOT NULL,
+                external_post_id TEXT NOT NULL,
+                sync_mode TEXT NOT NULL DEFAULT 'manual',
+                last_payload TEXT,
+                last_synced_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(module_key, platform, external_channel_id, external_post_id)
+            );
+
             CREATE TABLE IF NOT EXISTS messages (
                 id TEXT PRIMARY KEY,
                 channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,

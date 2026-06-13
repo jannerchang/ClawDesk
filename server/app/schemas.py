@@ -93,6 +93,41 @@ class ChannelBotBindingOut(BaseModel):
     updated_at: str
 
 
+class ModulePostBindingCreate(BaseModel):
+    module_key: str
+    module_label: str
+    platform: Literal["mattermost", "discord", "clawdesk"] = "mattermost"
+    external_channel_id: str
+    external_post_id: str
+    sync_mode: Literal["manual", "on_change", "scheduled"] = "manual"
+
+
+class ModulePostBindingUpdate(BaseModel):
+    module_label: str | None = None
+    sync_mode: Literal["manual", "on_change", "scheduled"] | None = None
+
+
+class ModulePostBindingOut(BaseModel):
+    id: str
+    module_key: str
+    module_label: str
+    platform: str
+    external_channel_id: str
+    external_post_id: str
+    sync_mode: str
+    last_payload: dict[str, Any] | None = None
+    last_synced_at: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class ModulePostSyncCreate(BaseModel):
+    title: str | None = None
+    summary: str | None = None
+    status: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
 class MessageCreate(BaseModel):
     sender_type: str = "user"
     sender_name: str = "Janner"
@@ -197,3 +232,11 @@ def bot_binding_from_row(row: dict[str, Any]) -> ChannelBotBindingOut:
     data["enabled"] = bool(data.get("enabled"))
     data["config"] = loads_json(data.get("config"))
     return ChannelBotBindingOut(**data)
+
+
+def module_post_binding_from_row(row: dict[str, Any]) -> ModulePostBindingOut:
+    from app.db import loads_json
+
+    data = dict(row)
+    data["last_payload"] = loads_json(data.get("last_payload")) if data.get("last_payload") else None
+    return ModulePostBindingOut(**data)

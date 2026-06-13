@@ -4,7 +4,7 @@ import os
 
 from fastapi import FastAPI
 
-from app.api import agents, attachments, channels, messages, spaces
+from app.api import agents, attachments, channels, messages, module_posts, spaces
 from app.db import init_db
 
 app = FastAPI(title="ClawDesk Server", version="0.1.0")
@@ -25,3 +25,4 @@ app.include_router(channels.router)
 app.include_router(messages.router)
 app.include_router(attachments.router)
 app.include_router(agents.router)
+app.include_router(module_posts.router)

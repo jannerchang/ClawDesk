@@ -103,6 +103,8 @@ This keeps workstation work direct: the office/current machine does not need a f
 
 Bot-in-channel behavior is modeled as session bindings: [`docs/architecture/bot-session-bindings.md`](docs/architecture/bot-session-bindings.md).
 
+Module status can be bound to external posts for targeted updates: [`docs/architecture/module-post-sync.md`](docs/architecture/module-post-sync.md).
+
 ## Earlier native prototype
 
 The existing FastAPI + SwiftUI prototype is kept as a native-client exploration path. It remains useful for Hermes-specific UX and Apple-native experiments, but it is no longer the only or default path.
